@@ -5,6 +5,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(5000),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+  DATABASE_URL: z.string({ error: "DATABASE_URL is required" }).min(1, { error: "DATABASE_URL cannot be empty" }),
   CORS_ORIGINS: z
     .string()
     .default("http://localhost:3000,http://localhost:5173")
