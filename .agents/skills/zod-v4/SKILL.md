@@ -31,6 +31,7 @@ This skill provides authoritative guidance on writing modern, idiomatic, and non
 | **Min/Max Length** | `z.string().min(5, { message: "Too short" })` | `z.string().min(5, { error: "Minimum 5 characters required" })` |
 | **Number Range** | `z.number().positive({ message: "Must be > 0" })` | `z.number().positive({ error: "Must be positive" })` |
 | **Dynamic Error Function** | `z.string({ errorMap: (issue, ctx) => ... })` | `z.string({ error: (issue) => `Invalid value: ${issue.code}` })` |
+| **Error Tree Formatting** | `error.format()` | `z.treeifyError(error)` / `z.formatError(error)` |
 
 ---
 
