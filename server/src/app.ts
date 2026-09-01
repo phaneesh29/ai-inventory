@@ -5,7 +5,7 @@ import compression from "compression";
 import { env } from "./config/env.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
-import apiRouter from "./routes/index.js";
+import v1Modules from "./modules/index.js";
 
 export const createApp = (): Express => {
   const app = express();
@@ -17,7 +17,8 @@ export const createApp = (): Express => {
   app.use(express.urlencoded({ extended: true, limit: "10mb" }));
   app.use(requestLogger);
 
-  app.use("/api", apiRouter);
+  app.use("/api/v1", v1Modules);
+
   app.use(notFoundHandler);
   app.use(errorHandler);
 
