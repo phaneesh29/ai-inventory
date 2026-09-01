@@ -11,7 +11,7 @@ const startServer = async () => {
       {
         port: env.PORT,
         env: env.NODE_ENV,
-        healthCheck: `http://localhost:${env.PORT}/api/health`,
+        healthCheck: `http://localhost:${env.PORT}/api/v1/health`,
       },
       `⚡ Server running at http://localhost:${env.PORT}`
     );

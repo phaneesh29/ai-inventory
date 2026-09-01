@@ -1,6 +1,7 @@
 {
   "name": "ai-inventory-server",
   "version": "1.0.0",
+  "type": "module",
   "description": "Production-grade Express.js backend for AI-powered vendor and inventory management platform",
   "main": "dist/index.js",
   "scripts": {
