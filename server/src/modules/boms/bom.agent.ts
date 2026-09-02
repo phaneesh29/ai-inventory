@@ -9,16 +9,8 @@ export interface RunBOMAgentParams {
   workspaceId: string;
   name: string;
   version?: string;
-  items: Array<{
-    partNumber: string;
-    name: string;
-    category: string;
-    unit: string;
-    quantity: number;
-    specifications?: Record<string, any>;
-    referenceDesignator?: string;
-    notes?: string;
-  }>;
+  items?: any[];
+  rawContent?: string | any[];
   instructions?: string;
 }
 
@@ -40,15 +32,19 @@ export const runBOMAgent = async (params: RunBOMAgentParams): Promise<BOMAgentRe
     tools,
   });
 
+  const contentToProcess = params.rawContent !== undefined
+    ? (typeof params.rawContent === "string" ? params.rawContent : JSON.stringify(params.rawContent, null, 2))
+    : JSON.stringify(params.items || [], null, 2);
+
   const result = await agent.generate({
     prompt: `Process and persist this BOM run:
 Workspace ID: ${params.workspaceId}
 BOM Title: ${params.name}
 Version: ${params.version || "v1.0"}
-Custom Instructions: ${params.instructions || "Standardize semiconductor specifications and persist."}
+Custom Instructions: ${params.instructions || "Standardize semiconductor specifications, normalize units/categories, and persist."}
 
-Raw Items Data:
-${JSON.stringify(params.items, null, 2)}`,
+Raw BOM Content / Table Data:
+${contentToProcess}`,
   });
 
   return {

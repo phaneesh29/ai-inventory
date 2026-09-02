@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  uploadBOMFile,
   createBOM,
   processBOMWithAgent,
   getBOMsByWorkspace,
@@ -10,6 +11,7 @@ import {
   deleteBOM,
 } from "./bom.controller.js";
 import { validate } from "../../middleware/validate.js";
+import { upload } from "../../middleware/upload.js";
 import {
   CreateBOMSchema,
   ProcessBOMWithAgentSchema,
@@ -22,6 +24,7 @@ import {
 
 const router = Router();
 
+router.post("/upload", upload.single("file"), uploadBOMFile);
 router.post("/", validate({ body: CreateBOMSchema }), createBOM);
 router.post("/agent-process", validate({ body: ProcessBOMWithAgentSchema }), processBOMWithAgent);
 router.get("/workspace/:workspaceId", validate({ params: WorkspaceIdParamSchema }), getBOMsByWorkspace);
