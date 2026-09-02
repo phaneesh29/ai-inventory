@@ -4,6 +4,7 @@ import workspaceRoutes from "./workspaces/workspace.routes.js";
 import bomRoutes from "./boms/bom.routes.js";
 import inventoryRoutes from "./inventory/inventory.routes.js";
 import itemRoutes from "./items/item.routes.js";
+import supplierRoutes from "./suppliers/supplier.routes.js";
 
 const v1Router = Router();
 
@@ -12,5 +13,6 @@ v1Router.use("/workspaces", workspaceRoutes);
 v1Router.use("/items", itemRoutes);
 v1Router.use("/boms", bomRoutes);
 v1Router.use("/inventory", inventoryRoutes);
+v1Router.use("/suppliers", supplierRoutes);
 
 export default v1Router;
