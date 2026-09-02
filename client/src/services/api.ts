@@ -987,6 +987,29 @@ export const approveBOMPlan = async (bomId: string, payload: any): Promise<any> 
   return json.data;
 };
 
+export const createBOM = async (payload: {
+  workspaceId: string;
+  name: string;
+  version?: string;
+  items?: any[];
+}): Promise<EnrichedBOMDetail> => {
+  const res = await fetch(`${API_BASE_URL}/boms`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      workspaceId: payload.workspaceId,
+      name: payload.name,
+      version: payload.version || "v1.0",
+      items: payload.items || [],
+    }),
+  });
+  const json: ApiResponse<EnrichedBOMDetail> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to create BOM");
+  }
+  return json.data;
+};
+
 export const deleteBOM = async (id: string): Promise<void> => {
   const res = await fetch(`${API_BASE_URL}/boms/${id}`, {
     method: "DELETE",
@@ -996,5 +1019,6 @@ export const deleteBOM = async (id: string): Promise<void> => {
     throw new Error(json.error?.message || "Failed to delete BOM");
   }
 };
+
 
 

@@ -12,6 +12,7 @@ import {
   TrendingUp,
   FolderGit2,
   Microchip,
+  Layers,
   Menu,
   X,
   PanelLeftClose,
@@ -44,11 +45,18 @@ export const GlobalSidebar: React.FC = () => {
 
   const navItems = [
     {
-      label: "Workspaces (BOMs)",
+      label: "Workspaces",
       href: "/",
       icon: FolderGit2,
-      active: pathname === "/" || pathname.startsWith("/workspace"),
+      active: pathname === "/" || (pathname.startsWith("/workspace") && !pathname.includes("/bom-studio")),
       badge: "Projects",
+    },
+    {
+      label: "Bill of Materials",
+      href: "/boms",
+      icon: Layers,
+      active: pathname.startsWith("/boms"),
+      badge: "BOMs",
     },
     {
       label: "Component Catalog",
