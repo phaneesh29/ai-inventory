@@ -13,6 +13,8 @@ import {
 } from "../../db/index.js";
 import { receivePurchaseOrder } from "../purchaseOrders/purchaseOrder.service.js";
 
+const cleanJSON = <T>(data: T): T => JSON.parse(JSON.stringify(data));
+
 export const createInvenAITools = () => {
   const searchComponents = tool({
     description: "Searches the master component catalog by part number, name, category, or specifications.",
@@ -39,10 +41,10 @@ export const createInvenAITools = () => {
         .where(filter)
         .limit(limit);
 
-      return {
+      return cleanJSON({
         totalMatches: items.length,
         items,
-      };
+      });
     },
   });
 
@@ -88,10 +90,10 @@ export const createInvenAITools = () => {
         ? await query.where(and(...conditions)).limit(limit)
         : await query.limit(limit);
 
-      return {
+      return cleanJSON({
         totalRecords: rows.length,
         inventory: rows,
-      };
+      });
     },
   });
 
@@ -136,19 +138,35 @@ export const createInvenAITools = () => {
         ? await query.where(and(...conditions)).limit(limit)
         : await query.limit(limit);
 
-      return {
+      return cleanJSON({
         totalQuotes: rows.length,
         quotes: rows,
-      };
+      });
     },
   });
 
   const listLowStockAlerts = tool({
-    description: "Retrieves all warehouse inventory components where available stock is below the reorder threshold.",
+    description: "Retrieves all warehouse inventory components where available stock is below the reorder threshold. Optionally filter by category or partNumber.",
     inputSchema: z.object({
+      category: z.string().optional(),
+      partNumber: z.string().optional(),
       limit: z.number().int().positive().max(50).default(20),
     }),
-    execute: async ({ limit }) => {
+    execute: async ({ category, partNumber, limit }) => {
+      const conditions = [
+        lte(
+          sql`${inventoryTable.quantityOnHand} - ${inventoryTable.quantityReserved}`,
+          inventoryTable.reorderThreshold
+        ),
+      ];
+
+      if (category) {
+        conditions.push(ilike(itemsTable.category, `%${category}%`));
+      }
+      if (partNumber) {
+        conditions.push(ilike(itemsTable.partNumber, `%${partNumber}%`));
+      }
+
       const rows = await db
         .select({
           itemId: itemsTable.id,
@@ -164,18 +182,13 @@ export const createInvenAITools = () => {
         })
         .from(inventoryTable)
         .innerJoin(itemsTable, eq(inventoryTable.itemId, itemsTable.id))
-        .where(
-          lte(
-            sql`${inventoryTable.quantityOnHand} - ${inventoryTable.quantityReserved}`,
-            inventoryTable.reorderThreshold
-          )
-        )
+        .where(and(...conditions))
         .limit(limit);
 
-      return {
+      return cleanJSON({
         totalLowStockItems: rows.length,
         items: rows,
-      };
+      });
     },
   });
 
@@ -193,12 +206,12 @@ export const createInvenAITools = () => {
         : undefined;
 
       if (!filter) {
-        return { error: "Either bomId or bomName must be provided" };
+        return cleanJSON({ error: "Either bomId or bomName must be provided" });
       }
 
       const [bom] = await db.select().from(bomsTable).where(filter).limit(1);
       if (!bom) {
-        return { error: "BOM not found" };
+        return cleanJSON({ error: "BOM not found" });
       }
 
       const items = await db
@@ -216,11 +229,11 @@ export const createInvenAITools = () => {
         .innerJoin(itemsTable, eq(bomItemsTable.itemId, itemsTable.id))
         .where(eq(bomItemsTable.bomId, bom.id));
 
-      return {
+      return cleanJSON({
         bom,
         totalItems: items.length,
         items,
-      };
+      });
     },
   });
 
@@ -259,10 +272,10 @@ export const createInvenAITools = () => {
         .orderBy(desc(purchaseOrdersTable.createdAt))
         .limit(limit);
 
-      return {
+      return cleanJSON({
         totalRecords: rows.length,
         purchaseOrders: rows,
-      };
+      });
     },
   });
 
@@ -290,7 +303,7 @@ export const createInvenAITools = () => {
       }
 
       if (!resolvedPOId) {
-        return { error: "Either purchaseOrderId or valid poNumber must be provided" };
+        return cleanJSON({ error: "Either purchaseOrderId or valid poNumber must be provided" });
       }
 
       const result = await receivePurchaseOrder(resolvedPOId, {
@@ -298,10 +311,10 @@ export const createInvenAITools = () => {
         notes: deliveryNotes,
       });
 
-      return {
+      return cleanJSON({
         status: "PURCHASE_ORDER_RECEIVED_SUCCESSFULLY",
         result,
-      };
+      });
     },
   });
 
@@ -328,10 +341,10 @@ export const createInvenAITools = () => {
         })
         .returning();
 
-      return {
+      return cleanJSON({
         status: "COMPONENT_INSERTED_SUCCESSFULLY",
         component: created,
-      };
+      });
     },
   });
 
@@ -358,10 +371,10 @@ export const createInvenAITools = () => {
         })
         .returning();
 
-      return {
+      return cleanJSON({
         status: "WAREHOUSE_STOCK_RECORD_CREATED",
         stock: created,
-      };
+      });
     },
   });
 
@@ -390,10 +403,10 @@ export const createInvenAITools = () => {
         })
         .returning();
 
-      return {
+      return cleanJSON({
         status: "SUPPLIER_REGISTERED_SUCCESSFULLY",
         supplier: created,
-      };
+      });
     },
   });
 
@@ -426,10 +439,10 @@ export const createInvenAITools = () => {
         })
         .returning();
 
-      return {
+      return cleanJSON({
         status: "SUPPLIER_CATALOG_ITEM_ADDED",
         catalogItem: created,
-      };
+      });
     },
   });
 
