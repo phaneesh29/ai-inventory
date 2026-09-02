@@ -36,6 +36,48 @@ export interface Item {
   updatedAt: string;
 }
 
+export interface PriceTier {
+  minQuantity: number;
+  unitPrice: number;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  code: string;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  website?: string | null;
+  reliabilityScore: number;
+  leadTimeDaysAverage: number;
+  paymentTerms: string;
+  currency: string;
+  totalCatalogItems?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupplierItem {
+  id: string;
+  supplierId: string;
+  itemId: string;
+  partNumber: string;
+  name: string;
+  category?: string;
+  unit?: string;
+  specifications?: Record<string, any>;
+  supplierPartNumber: string;
+  unitPrice: number;
+  minimumOrderQuantity: number;
+  packageType: string;
+  stockAvailable: number;
+  leadTimeDays: number;
+  priceTiers: PriceTier[];
+  isPreferred: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SystemHealthData {
   status: "ok" | "degraded" | "error";
   latencyMs: number;
@@ -205,5 +247,120 @@ export const deleteItem = async (id: string): Promise<void> => {
   const json: ApiResponse = await res.json();
   if (!json.success) {
     throw new Error(json.error?.message || "Failed to delete item");
+  }
+};
+
+export const fetchSuppliers = async (params?: {
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ suppliers: Supplier[]; total: number }> => {
+  const query = new URLSearchParams();
+  if (params?.search) query.append("search", params.search);
+  if (params?.limit) query.append("limit", params.limit.toString());
+  if (params?.offset) query.append("offset", params.offset.toString());
+
+  const res = await fetch(`${API_BASE_URL}/suppliers?${query.toString()}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<Supplier[]> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to fetch suppliers");
+  }
+  return {
+    suppliers: Array.isArray(json.data) ? json.data : [],
+    total: json.pagination?.total || (Array.isArray(json.data) ? json.data.length : 0),
+  };
+};
+
+export const fetchSupplierById = async (id: string): Promise<Supplier> => {
+  const res = await fetch(`${API_BASE_URL}/suppliers/${id}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<Supplier> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || `Failed to fetch supplier '${id}'`);
+  }
+  return json.data;
+};
+
+export const createSupplier = async (payload: {
+  name: string;
+  code: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
+  reliabilityScore?: number;
+  leadTimeDaysAverage?: number;
+  paymentTerms?: string;
+  currency?: string;
+}): Promise<Supplier> => {
+  const res = await fetch(`${API_BASE_URL}/suppliers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<Supplier> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to create supplier");
+  }
+  return json.data;
+};
+
+export const deleteSupplier = async (id: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}/suppliers/${id}`, {
+    method: "DELETE",
+  });
+  const json: ApiResponse = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to delete supplier");
+  }
+};
+
+export const fetchSupplierItems = async (supplierId: string): Promise<SupplierItem[]> => {
+  const res = await fetch(`${API_BASE_URL}/suppliers/${supplierId}/items`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<SupplierItem[]> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to fetch supplier catalog items");
+  }
+  return Array.isArray(json.data) ? json.data : [];
+};
+
+export const addSupplierItem = async (
+  supplierId: string,
+  payload: {
+    itemId?: string;
+    partNumber?: string;
+    supplierPartNumber: string;
+    unitPrice: number;
+    minimumOrderQuantity?: number;
+    packageType?: string;
+    stockAvailable?: number;
+    leadTimeDays?: number;
+    priceTiers?: PriceTier[];
+    isPreferred?: boolean;
+  }
+): Promise<SupplierItem> => {
+  const res = await fetch(`${API_BASE_URL}/suppliers/${supplierId}/items`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<SupplierItem> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to add supplier catalog quote");
+  }
+  return json.data;
+};
+
+export const deleteSupplierItem = async (supplierId: string, itemId: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}/suppliers/${supplierId}/items/${itemId}`, {
+    method: "DELETE",
+  });
+  const json: ApiResponse = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to delete supplier item");
   }
 };
