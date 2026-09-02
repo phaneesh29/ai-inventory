@@ -428,3 +428,15 @@ export const deleteSupplierItem = async (supplierId: string, itemId: string): Pr
     throw new Error(json.error?.message || "Failed to delete supplier item");
   }
 };
+
+export const fetchSuppliersByItem = async (itemId: string): Promise<SupplierItem[]> => {
+  const res = await fetch(`${API_BASE_URL}/suppliers/items/${itemId}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<SupplierItem[]> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to fetch suppliers for item");
+  }
+  return Array.isArray(json.data) ? json.data : [];
+};
+
