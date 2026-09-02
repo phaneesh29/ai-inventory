@@ -1,7 +1,11 @@
 import { Request, Response } from "express";
 import * as itemService from "./item.service.js";
 import { sendSuccess, sendPaginated } from "../../utils/apiResponse.js";
-import type { CreateItemInput, UpdateItemInput, ItemQueryInput } from "./item.schema.js";
+import type {
+  CreateItemInput,
+  UpdateItemInput,
+  ItemQueryInput,
+} from "./item.schema.js";
 
 export const getItems = async (req: Request, res: Response): Promise<Response> => {
   const query = req.query as unknown as ItemQueryInput;
@@ -25,7 +29,7 @@ export const getItemById = async (req: Request, res: Response): Promise<Response
 export const createItem = async (req: Request, res: Response): Promise<Response> => {
   const body = req.body as CreateItemInput;
   const result = await itemService.createItem(body);
-  return sendSuccess(res, result, "Item created successfully in master catalog", 201);
+  return sendSuccess(res, result, "Item created successfully", 201);
 };
 
 export const updateItem = async (req: Request, res: Response): Promise<Response> => {
@@ -38,5 +42,5 @@ export const updateItem = async (req: Request, res: Response): Promise<Response>
 export const deleteItem = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params as { id: string };
   const result = await itemService.deleteItem(id);
-  return sendSuccess(res, result, "Item deleted successfully from catalog");
+  return sendSuccess(res, result, "Item deleted successfully");
 };

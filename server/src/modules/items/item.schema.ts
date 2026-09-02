@@ -17,15 +17,12 @@ export const CreateItemSchema = z.object({
     .trim()
     .min(1, { error: "Category cannot be empty" })
     .max(100),
-  unit: z
-    .string({ error: "Unit is required" })
-    .trim()
-    .min(1, { error: "Unit cannot be empty" })
-    .max(50),
+  unit: z.string().trim().min(1).max(50).default("pcs"),
   specifications: z.record(z.string(), z.any()).default({}),
 });
 
 export const UpdateItemSchema = z.object({
+  partNumber: z.string().trim().min(1).max(100).optional(),
   name: z.string().trim().min(1).max(255).optional(),
   description: z.string().trim().nullable().optional(),
   category: z.string().trim().min(1).max(100).optional(),
@@ -36,8 +33,8 @@ export const UpdateItemSchema = z.object({
 export const ItemQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
   offset: z.coerce.number().int().nonnegative().default(0),
-  search: z.string().trim().optional(),
   category: z.string().trim().optional(),
+  search: z.string().trim().optional(),
 });
 
 export const ItemIdParamSchema = z.object({

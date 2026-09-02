@@ -1,6 +1,7 @@
 import { parseUploadedBOMFile } from "../boms/bom.parser.js";
 import { runBOMIngestionAgent, BOMIngestionResult } from "./bomIngestion/bomIngestion.agent.js";
 import { runInventoryAuditAgent, InventoryAuditResult } from "./inventoryAudit/inventoryAudit.agent.js";
+import { runAlternativeMatcherAgent, AlternativeMatchResult } from "./alternativeMatcher/alternativeMatcher.agent.js";
 import { InternalServerError } from "../../utils/errors.js";
 import type { EnrichedBOM } from "../boms/bom.service.js";
 
@@ -16,6 +17,7 @@ export interface RunBOMWorkflowParams {
 export interface BOMWorkflowResult {
   bom: EnrichedBOM;
   audit: InventoryAuditResult;
+  alternatives: AlternativeMatchResult | null;
   bomAgentSummary: string;
 }
 
@@ -47,9 +49,25 @@ export const runBOMUploadAndAuditWorkflow = async (
     batchQuantity,
   });
 
+  let alternativesResult: AlternativeMatchResult | null = null;
+
+  if (auditResult.deficitItems.length > 0) {
+    alternativesResult = await runAlternativeMatcherAgent({
+      deficitItems: auditResult.deficitItems.map((d) => ({
+        itemId: d.itemId,
+        partNumber: d.partNumber,
+        name: d.name,
+        category: d.category,
+        deficitQuantity: d.deficitQuantity,
+        specifications: ingestionResult.bom?.items.find((i) => i.itemId === d.itemId)?.specifications,
+      })),
+    });
+  }
+
   return {
     bom: ingestionResult.bom,
     audit: auditResult,
+    alternatives: alternativesResult,
     bomAgentSummary: ingestionResult.agentSummary,
   };
 };
