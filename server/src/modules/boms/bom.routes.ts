@@ -2,12 +2,15 @@ import { Router } from "express";
 import {
   uploadBOMFile,
   createBOM,
+  getAllBOMs,
+  getBOMsSummary,
   getBOMsByWorkspace,
   getBOMById,
   updateBOM,
   addItemsToBOM,
   removeItemFromBOM,
   deleteBOM,
+  approveBOMPlan,
 } from "./bom.controller.js";
 import { validate } from "../../middleware/validate.js";
 import { upload } from "../../middleware/upload.js";
@@ -22,7 +25,11 @@ import {
 
 const router = Router();
 
+router.get("/", getAllBOMs);
+router.get("/summary", getBOMsSummary);
 router.post("/upload", upload.single("file"), uploadBOMFile);
+router.post("/approve", approveBOMPlan);
+router.post("/:id/approve", approveBOMPlan);
 router.post("/", validate({ body: CreateBOMSchema }), createBOM);
 router.get("/workspace/:workspaceId", validate({ params: WorkspaceIdParamSchema }), getBOMsByWorkspace);
 router.get("/:id", validate({ params: BOMIdParamSchema }), getBOMById);

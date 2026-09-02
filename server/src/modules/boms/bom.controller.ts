@@ -38,6 +38,25 @@ export const uploadBOMFile = async (req: Request, res: Response): Promise<Respon
   );
 };
 
+export const getAllBOMs = async (_req: Request, res: Response): Promise<Response> => {
+  const result = await bomService.findAllBOMs();
+  return sendSuccess(res, result, "All BOMs retrieved successfully");
+};
+
+export const getBOMsSummary = async (_req: Request, res: Response): Promise<Response> => {
+  const result = await bomService.getBOMsSummary();
+  return sendSuccess(res, result, "Global BOMs summary retrieved successfully");
+};
+
+export const approveBOMPlan = async (req: Request, res: Response): Promise<Response> => {
+  const { id } = req.params as { id: string };
+  const result = await approveBOMProcessWorkflow({
+    ...req.body,
+    bomId: id || req.body.bomId,
+  });
+  return sendSuccess(res, result, "BOM execution plan approved and executed successfully");
+};
+
 export const createBOM = async (req: Request, res: Response): Promise<Response> => {
   const body = req.body as CreateBOMInput;
   const result = await bomService.createBOM(body);

@@ -869,3 +869,132 @@ export const fetchSupplyChainInsights = async (): Promise<SupplyChainInsightsRes
   return json.data;
 };
 
+export interface GlobalBOMItem {
+  id: string;
+  workspaceId: string;
+  workspaceName?: string;
+  name: string;
+  version: string;
+  totalItems: number;
+  totalCost?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EnrichedBOMItemDetail {
+  id: string;
+  itemId: string;
+  partNumber: string;
+  name: string;
+  description: string | null;
+  category: string;
+  unit: string;
+  specifications: Record<string, any>;
+  quantity: number;
+  referenceDesignator: string | null;
+  notes: string | null;
+  quantityOnHand?: number;
+  quantityReserved?: number;
+  quantityAvailable?: number;
+  unitCost?: number | null;
+  totalCost?: number;
+}
+
+export interface EnrichedBOMDetail {
+  id: string;
+  workspaceId: string;
+  workspaceName?: string;
+  name: string;
+  version: string;
+  totalCost?: number;
+  items: EnrichedBOMItemDetail[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GlobalBOMSummary {
+  totalBOMs: number;
+  totalLineItems: number;
+  totalUniqueComponents: number;
+}
+
+export const fetchGlobalBOMs = async (): Promise<GlobalBOMItem[]> => {
+  const res = await fetch(`${API_BASE_URL}/boms`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<GlobalBOMItem[]> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to fetch global BOMs");
+  }
+  return Array.isArray(json.data) ? json.data : [];
+};
+
+export const fetchGlobalBOMSummary = async (): Promise<GlobalBOMSummary> => {
+  const res = await fetch(`${API_BASE_URL}/boms/summary`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<GlobalBOMSummary> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to fetch BOM summary");
+  }
+  return json.data;
+};
+
+export const fetchBOMsByWorkspace = async (workspaceId: string): Promise<GlobalBOMItem[]> => {
+  const res = await fetch(`${API_BASE_URL}/boms/workspace/${workspaceId}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<GlobalBOMItem[]> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || `Failed to fetch BOMs for workspace '${workspaceId}'`);
+  }
+  return Array.isArray(json.data) ? json.data : [];
+};
+
+export const fetchBOMById = async (id: string): Promise<EnrichedBOMDetail> => {
+  const res = await fetch(`${API_BASE_URL}/boms/${id}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<EnrichedBOMDetail> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || `Failed to fetch BOM '${id}'`);
+  }
+  return json.data;
+};
+
+export const uploadBOMFile = async (formData: FormData): Promise<any> => {
+  const res = await fetch(`${API_BASE_URL}/boms/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  const json: ApiResponse<any> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to upload and audit BOM file");
+  }
+  return json.data;
+};
+
+export const approveBOMPlan = async (bomId: string, payload: any): Promise<any> => {
+  const res = await fetch(`${API_BASE_URL}/boms/${bomId}/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<any> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to approve BOM plan");
+  }
+  return json.data;
+};
+
+export const deleteBOM = async (id: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}/boms/${id}`, {
+    method: "DELETE",
+  });
+  const json: ApiResponse = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to delete BOM");
+  }
+};
+
+

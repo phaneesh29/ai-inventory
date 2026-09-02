@@ -130,6 +130,29 @@ export const createBOM = async (input: CreateBOMInput): Promise<EnrichedBOM> => 
   };
 };
 
+export const findAllBOMs = async (): Promise<
+  Array<BOM & { workspaceName: string; totalItems: number }>
+> => {
+  const boms = await db
+    .select({
+      id: bomsTable.id,
+      workspaceId: bomsTable.workspaceId,
+      workspaceName: workspacesTable.name,
+      name: bomsTable.name,
+      version: bomsTable.version,
+      createdAt: bomsTable.createdAt,
+      updatedAt: bomsTable.updatedAt,
+      totalItems: sql<number>`count(${bomItemsTable.id})::int`,
+    })
+    .from(bomsTable)
+    .innerJoin(workspacesTable, eq(bomsTable.workspaceId, workspacesTable.id))
+    .leftJoin(bomItemsTable, eq(bomsTable.id, bomItemsTable.bomId))
+    .groupBy(bomsTable.id, workspacesTable.name)
+    .orderBy(desc(bomsTable.createdAt));
+
+  return boms;
+};
+
 export const findBOMsByWorkspaceId = async (
   workspaceId: string
 ): Promise<Array<BOM & { totalItems: number }>> => {
@@ -162,10 +185,62 @@ export const findBOMsByWorkspaceId = async (
   return boms;
 };
 
+export interface EnrichedBOMItem {
+  id: string;
+  itemId: string;
+  partNumber: string;
+  name: string;
+  description: string | null;
+  category: string;
+  unit: string;
+  specifications: Record<string, any>;
+  quantity: number;
+  referenceDesignator: string | null;
+  notes: string | null;
+  quantityOnHand?: number;
+  quantityReserved?: number;
+  quantityAvailable?: number;
+  unitCost?: number | null;
+  totalCost?: number;
+}
+
+export interface EnrichedBOM extends BOM {
+  workspaceName?: string;
+  totalCost?: number;
+  items: EnrichedBOMItem[];
+}
+
+export const getBOMsSummary = async () => {
+  const [totalBOMsResult] = await db
+    .select({ count: sql<number>`count(${bomsTable.id})::int` })
+    .from(bomsTable);
+  const [totalBOMItemsResult] = await db
+    .select({ count: sql<number>`count(${bomItemsTable.id})::int` })
+    .from(bomItemsTable);
+  const [totalUniqueComponentsResult] = await db
+    .select({ count: sql<number>`count(distinct ${bomItemsTable.itemId})::int` })
+    .from(bomItemsTable);
+
+  return {
+    totalBOMs: totalBOMsResult?.count || 0,
+    totalLineItems: totalBOMItemsResult?.count || 0,
+    totalUniqueComponents: totalUniqueComponentsResult?.count || 0,
+  };
+};
+
 export const findBOMById = async (id: string): Promise<EnrichedBOM> => {
   const [bom] = await db
-    .select()
+    .select({
+      id: bomsTable.id,
+      workspaceId: bomsTable.workspaceId,
+      workspaceName: workspacesTable.name,
+      name: bomsTable.name,
+      version: bomsTable.version,
+      createdAt: bomsTable.createdAt,
+      updatedAt: bomsTable.updatedAt,
+    })
     .from(bomsTable)
+    .innerJoin(workspacesTable, eq(bomsTable.workspaceId, workspacesTable.id))
     .where(eq(bomsTable.id, id))
     .limit(1);
 
@@ -186,14 +261,36 @@ export const findBOMById = async (id: string): Promise<EnrichedBOM> => {
       quantity: bomItemsTable.quantity,
       referenceDesignator: bomItemsTable.referenceDesignator,
       notes: bomItemsTable.notes,
+      quantityOnHand: inventoryTable.quantityOnHand,
+      quantityReserved: inventoryTable.quantityReserved,
+      quantityAvailable: sql<number>`coalesce(${inventoryTable.quantityOnHand}, 0) - coalesce(${inventoryTable.quantityReserved}, 0)`,
+      unitCost: inventoryTable.unitCost,
     })
     .from(bomItemsTable)
     .innerJoin(itemsTable, eq(bomItemsTable.itemId, itemsTable.id))
+    .leftJoin(inventoryTable, eq(itemsTable.id, inventoryTable.itemId))
     .where(eq(bomItemsTable.bomId, id));
+
+  const enrichedItems = rows.map((r) => {
+    const cost = r.unitCost ? Number((r.unitCost * r.quantity).toFixed(2)) : 0;
+    return {
+      ...r,
+      quantityOnHand: r.quantityOnHand ?? 0,
+      quantityReserved: r.quantityReserved ?? 0,
+      quantityAvailable: Math.max(0, r.quantityAvailable ?? 0),
+      unitCost: r.unitCost ?? null,
+      totalCost: cost,
+    };
+  });
+
+  const totalBOMCost = Number(
+    enrichedItems.reduce((acc, curr) => acc + (curr.totalCost || 0), 0).toFixed(2)
+  );
 
   return {
     ...bom,
-    items: rows,
+    totalCost: totalBOMCost,
+    items: enrichedItems,
   };
 };
 
