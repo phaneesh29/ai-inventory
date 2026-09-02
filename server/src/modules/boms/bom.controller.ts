@@ -5,7 +5,7 @@ import { parseUploadedBOMFile } from "./bom.parser.js";
 import { createWorkspace } from "../workspaces/workspace.service.js";
 import { sendSuccess } from "../../utils/apiResponse.js";
 import { BadRequestError, InternalServerError } from "../../utils/errors.js";
-import type { CreateBOMInput, UpdateBOMInput, AddBOMItemsInput, ProcessBOMWithAgentInput } from "./bom.schema.js";
+import type { CreateBOMInput, UpdateBOMInput, AddBOMItemsInput } from "./bom.schema.js";
 
 export const uploadBOMFile = async (req: Request, res: Response): Promise<Response> => {
   if (!req.file) {
@@ -56,25 +56,6 @@ export const createBOM = async (req: Request, res: Response): Promise<Response> 
   const body = req.body as CreateBOMInput;
   const result = await bomService.createBOM(body);
   return sendSuccess(res, result, "BOM created successfully", 201);
-};
-
-export const processBOMWithAgent = async (req: Request, res: Response): Promise<Response> => {
-  const body = req.body as ProcessBOMWithAgentInput;
-  const result = await runBOMAgent(body);
-
-  if (!result.bom) {
-    throw new InternalServerError("Agent failed to persist BOM to database");
-  }
-
-  return sendSuccess(
-    res,
-    {
-      bom: result.bom,
-      agentSummary: result.agentSummary,
-    },
-    "BOM audited, enriched and persisted to database",
-    201
-  );
 };
 
 export const getBOMsByWorkspace = async (req: Request, res: Response): Promise<Response> => {
