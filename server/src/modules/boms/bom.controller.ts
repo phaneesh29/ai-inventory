@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import * as bomService from "./bom.service.js";
 import { runBOMAgent } from "./bom.agent.js";
 import { sendSuccess } from "../../utils/apiResponse.js";
+import { InternalServerError } from "../../utils/errors.js";
 import type { CreateBOMInput, UpdateBOMInput, AddBOMItemsInput, ProcessBOMWithAgentInput } from "./bom.schema.js";
 
 export const createBOM = async (req: Request, res: Response): Promise<Response> => {
@@ -13,7 +14,20 @@ export const createBOM = async (req: Request, res: Response): Promise<Response> 
 export const processBOMWithAgent = async (req: Request, res: Response): Promise<Response> => {
   const body = req.body as ProcessBOMWithAgentInput;
   const result = await runBOMAgent(body);
-  return sendSuccess(res, result, "BOM audited, enriched and persisted by Agent", 201);
+
+  if (!result.bom) {
+    throw new InternalServerError("Agent failed to persist BOM to database");
+  }
+
+  return sendSuccess(
+    res,
+    {
+      bom: result.bom,
+      agentSummary: result.agentSummary,
+    },
+    "BOM audited, enriched and persisted to database",
+    201
+  );
 };
 
 export const getBOMsByWorkspace = async (req: Request, res: Response): Promise<Response> => {
