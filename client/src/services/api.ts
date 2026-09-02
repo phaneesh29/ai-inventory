@@ -793,3 +793,79 @@ export const deletePurchaseOrder = async (id: string): Promise<void> => {
     throw new Error(json.error?.message || "Failed to delete purchase order");
   }
 };
+
+export interface ComponentDemandForecast {
+  itemId: string;
+  partNumber: string;
+  name: string;
+  category: string;
+  quantityOnHand: number;
+  quantityReserved: number;
+  quantityAvailable: number;
+  reorderThreshold: number;
+  unitCost: number | null;
+  totalActiveBOMDemand: number;
+  dailyBurnRate: number;
+  daysOfSupplyRemaining: number;
+  projectedStockoutDate: string | null;
+  reorderDeadlineDate: string | null;
+  depletionUrgency: "CRITICAL" | "HIGH" | "MODERATE" | "HEALTHY";
+}
+
+export interface SupplyChainAnomaly {
+  anomalyType:
+    | "CRITICAL_STOCKOUT_RISK"
+    | "SINGLE_SOURCE_VULNERABILITY"
+    | "PRICE_SURGE_ANOMALY"
+    | "LONG_LEAD_TIME_BOTTLENECK"
+    | "EXCESS_IDLE_STOCK";
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+  itemId: string;
+  partNumber: string;
+  name: string;
+  category: string;
+  message: string;
+  metrics: Record<string, any>;
+  recommendedAction: string;
+}
+
+export interface VendorLeaderboardEntry {
+  supplierId: string;
+  supplierName: string;
+  supplierCode: string;
+  reliabilityScore: number;
+  averageLeadTimeDays: number;
+  catalogCoverageCount: number;
+  priceCompetitivenessScore: number;
+  compositeVendorScore: number;
+  tierRanking: "TIER_1_PREFERRED" | "TIER_2_QUALIFIED" | "TIER_3_MONITORED";
+  paymentTerms: string;
+  currency: string;
+}
+
+export interface SupplyChainInsightsResult {
+  overviewKPIs: {
+    totalCatalogComponents: number;
+    totalWarehouseStockValueUSD: number;
+    totalActiveAnomalies: number;
+    criticalDepletionCount: number;
+    singleSourceVulnerabilitiesCount: number;
+    averageSupplierReliability: number;
+  };
+  demandForecasts: ComponentDemandForecast[];
+  anomalies: SupplyChainAnomaly[];
+  vendorLeaderboard: VendorLeaderboardEntry[];
+  executiveAIBrief?: string;
+}
+
+export const fetchSupplyChainInsights = async (): Promise<SupplyChainInsightsResult> => {
+  const res = await fetch(`${API_BASE_URL}/insights`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<SupplyChainInsightsResult> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to fetch supply chain insights");
+  }
+  return json.data;
+};
+
