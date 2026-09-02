@@ -78,6 +78,32 @@ export interface SupplierItem {
   updatedAt: string;
 }
 
+export interface InventoryItem {
+  id: string;
+  itemId: string;
+  partNumber: string;
+  name: string;
+  description: string | null;
+  category: string;
+  unit: string;
+  specifications: Record<string, any>;
+  quantityOnHand: number;
+  quantityReserved: number;
+  quantityAvailable: number;
+  reorderThreshold: number;
+  isLowStock: boolean;
+  location: string;
+  unitCost: number | null;
+  totalValuation: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LowStockAlertItem extends InventoryItem {
+  deficit: number;
+  recommendedReorder: number;
+}
+
 export interface EnrichedPurchaseOrderItem {
   id: string;
   itemId: string;
@@ -493,6 +519,172 @@ export const fetchSuppliersByItem = async (itemId: string): Promise<SupplierItem
   return Array.isArray(json.data) ? json.data : [];
 };
 
+export const fetchInventory = async (params?: {
+  search?: string;
+  category?: string;
+  lowStock?: "true" | "false";
+  limit?: number;
+  offset?: number;
+}): Promise<{ items: InventoryItem[]; total: number }> => {
+  const query = new URLSearchParams();
+  if (params?.search) query.append("search", params.search);
+  if (params?.category) query.append("category", params.category);
+  if (params?.lowStock) query.append("lowStock", params.lowStock);
+  if (params?.limit) query.append("limit", params.limit.toString());
+  if (params?.offset) query.append("offset", params.offset.toString());
+
+  const res = await fetch(`${API_BASE_URL}/inventory?${query.toString()}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<InventoryItem[]> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to fetch inventory items");
+  }
+  return {
+    items: Array.isArray(json.data) ? json.data : [],
+    total: json.pagination?.total || (Array.isArray(json.data) ? json.data.length : 0),
+  };
+};
+
+export const fetchInventoryById = async (id: string): Promise<InventoryItem> => {
+  const res = await fetch(`${API_BASE_URL}/inventory/${id}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<InventoryItem> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || `Failed to fetch inventory item '${id}'`);
+  }
+  return json.data;
+};
+
+export const fetchLowStockAlerts = async (): Promise<{
+  alerts: LowStockAlertItem[];
+  totalAlerts: number;
+}> => {
+  const res = await fetch(`${API_BASE_URL}/inventory/alerts`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<{ alerts: LowStockAlertItem[]; totalAlerts: number }> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to fetch low stock alerts");
+  }
+  return json.data;
+};
+
+export const addInventoryItem = async (payload: {
+  itemId?: string;
+  partNumber?: string;
+  name?: string;
+  description?: string;
+  category?: string;
+  unit?: string;
+  specifications?: Record<string, any>;
+  quantityOnHand?: number;
+  quantityReserved?: number;
+  reorderThreshold?: number;
+  location?: string;
+  unitCost?: number;
+}): Promise<InventoryItem> => {
+  const res = await fetch(`${API_BASE_URL}/inventory`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<InventoryItem> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to add inventory item");
+  }
+  return json.data;
+};
+
+export const adjustInventoryStock = async (payload: {
+  id?: string;
+  itemId?: string;
+  delta: number;
+  reason?: string;
+  location?: string;
+  notes?: string;
+}): Promise<InventoryItem> => {
+  const res = await fetch(`${API_BASE_URL}/inventory/adjust`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<InventoryItem> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to adjust stock");
+  }
+  return json.data;
+};
+
+export const allocateInventoryStock = async (payload: {
+  id?: string;
+  itemId?: string;
+  quantity: number;
+  notes?: string;
+}): Promise<InventoryItem> => {
+  const res = await fetch(`${API_BASE_URL}/inventory/allocate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<InventoryItem> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to allocate stock");
+  }
+  return json.data;
+};
+
+export const releaseInventoryStock = async (payload: {
+  id?: string;
+  itemId?: string;
+  quantity: number;
+  notes?: string;
+}): Promise<InventoryItem> => {
+  const res = await fetch(`${API_BASE_URL}/inventory/release`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<InventoryItem> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to release stock");
+  }
+  return json.data;
+};
+
+export const updateInventoryItem = async (
+  id: string,
+  payload: Partial<{
+    quantityOnHand: number;
+    quantityReserved: number;
+    reorderThreshold: number;
+    location: string;
+    unitCost: number | null;
+  }>
+): Promise<InventoryItem> => {
+  const res = await fetch(`${API_BASE_URL}/inventory/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<InventoryItem> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to update inventory item");
+  }
+  return json.data;
+};
+
+export const deleteInventoryItem = async (id: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}/inventory/${id}`, {
+    method: "DELETE",
+  });
+  const json: ApiResponse = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to delete inventory item");
+  }
+};
+
 export const fetchPurchaseOrders = async (params?: {
   status?: string;
   supplierId?: string;
@@ -601,4 +793,3 @@ export const deletePurchaseOrder = async (id: string): Promise<void> => {
     throw new Error(json.error?.message || "Failed to delete purchase order");
   }
 };
-
