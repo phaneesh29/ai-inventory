@@ -10,6 +10,8 @@ import {
 import { NotFoundError, BadRequestError } from "../../utils/errors.js";
 import type {
   PurchaseOrderQueryInput,
+  CreatePurchaseOrderInput,
+  UpdatePurchaseOrderStatusInput,
   ReceivePurchaseOrderInput,
 } from "./purchaseOrder.schema.js";
 
@@ -192,6 +194,71 @@ export const findPurchaseOrderById = async (id: string): Promise<EnrichedPurchas
   };
 };
 
+export const createPurchaseOrder = async (
+  input: CreatePurchaseOrderInput
+): Promise<EnrichedPurchaseOrder> => {
+  const [supplier] = await db
+    .select()
+    .from(suppliersTable)
+    .where(eq(suppliersTable.id, input.supplierId));
+
+  if (!supplier) {
+    throw new NotFoundError(`Supplier with ID '${input.supplierId}' not found`);
+  }
+
+  let calculatedTotal = 0;
+  for (const item of input.items) {
+    calculatedTotal += Number((item.quantity * item.unitPrice).toFixed(3));
+  }
+
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const poNumber = `PO-${supplier.code}-${Date.now().toString().slice(-4)}-${randomSuffix}`;
+
+  const [createdPO] = await db
+    .insert(purchaseOrdersTable)
+    .values({
+      poNumber,
+      supplierId: input.supplierId,
+      status: input.status || "DRAFT",
+      totalAmount: calculatedTotal,
+      currency: input.currency || "USD",
+      notes: input.notes || null,
+    })
+    .returning();
+
+  for (const item of input.items) {
+    const lineTotal = Number((item.quantity * item.unitPrice).toFixed(3));
+    await db.insert(purchaseOrderItemsTable).values({
+      purchaseOrderId: createdPO.id,
+      itemId: item.itemId,
+      supplierPartNumber: item.supplierPartNumber,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: lineTotal,
+    });
+  }
+
+  return findPurchaseOrderById(createdPO.id);
+};
+
+export const updatePurchaseOrderStatus = async (
+  id: string,
+  input: UpdatePurchaseOrderStatusInput
+): Promise<EnrichedPurchaseOrder> => {
+  const po = await findPurchaseOrderById(id);
+
+  await db
+    .update(purchaseOrdersTable)
+    .set({
+      status: input.status,
+      notes: input.notes !== undefined ? input.notes : po.notes,
+      updatedAt: new Date(),
+    })
+    .where(eq(purchaseOrdersTable.id, id));
+
+  return findPurchaseOrderById(id);
+};
+
 export const receivePurchaseOrder = async (
   id: string,
   input: ReceivePurchaseOrderInput
@@ -335,3 +402,17 @@ export const receivePurchaseOrder = async (
     inventoryStockUpdates: stockUpdates,
   };
 };
+
+export const deletePurchaseOrder = async (id: string): Promise<void> => {
+  const [po] = await db
+    .select()
+    .from(purchaseOrdersTable)
+    .where(eq(purchaseOrdersTable.id, id));
+
+  if (!po) {
+    throw new NotFoundError(`Purchase order with ID '${id}' not found`);
+  }
+
+  await db.delete(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, id));
+};
+
