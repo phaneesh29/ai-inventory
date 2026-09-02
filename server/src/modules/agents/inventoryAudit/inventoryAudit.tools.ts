@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { eq, inArray, and, sql, not } from "drizzle-orm";
-import { db, bomsTable, bomItemsTable, itemsTable, inventoryTable } from "../../db/index.js";
+import { db, bomsTable, bomItemsTable, itemsTable, inventoryTable } from "../../../db/index.js";
 
 export interface BOMRequirementDetail {
   bomId: string;

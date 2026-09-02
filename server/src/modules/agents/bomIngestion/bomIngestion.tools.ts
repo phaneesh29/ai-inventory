@@ -1,20 +1,15 @@
 import { tool } from "ai";
-import { logger } from "../../config/logger.js";
-import { createBOM, EnrichedBOM } from "./bom.service.js";
-import { CreateBOMSchema } from "./bom.schema.js";
+import { createBOM, EnrichedBOM } from "../../boms/bom.service.js";
+import { CreateBOMSchema } from "../../boms/bom.schema.js";
 
-export const createBOMTools = () => {
+export const createBOMIngestionTools = () => {
   let createdBOM: EnrichedBOM | null = null;
 
   const tools = {
     saveBOMToDatabase: tool({
-      description: "Persists the standardized BOM and its line items directly into Neon PostgreSQL.",
+      description: "Persists the standardized BOM and its line items directly into the PostgreSQL database.",
       inputSchema: CreateBOMSchema,
       execute: async (validatedBOMInput) => {
-        logger.info(
-          { name: validatedBOMInput.name, workspaceId: validatedBOMInput.workspaceId },
-          "BOM Agent: persisting BOM to database"
-        );
         createdBOM = await createBOM(validatedBOMInput);
         return {
           status: "saved",

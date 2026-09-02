@@ -1,10 +1,8 @@
 import { Request, Response } from "express";
 import * as bomService from "./bom.service.js";
-import { runBOMAgent } from "./bom.agent.js";
-import { parseUploadedBOMFile } from "./bom.parser.js";
-import { runInventoryAuditAgent } from "../inventory/audit.agent.js";
+import { runBOMUploadAndAuditWorkflow } from "../agents/bomWorkflow.service.js";
 import { sendSuccess } from "../../utils/apiResponse.js";
-import { BadRequestError, InternalServerError } from "../../utils/errors.js";
+import { BadRequestError } from "../../utils/errors.js";
 import type { CreateBOMInput, UpdateBOMInput, AddBOMItemsInput } from "./bom.schema.js";
 
 export const uploadBOMFile = async (req: Request, res: Response): Promise<Response> => {
@@ -17,39 +15,20 @@ export const uploadBOMFile = async (req: Request, res: Response): Promise<Respon
     throw new BadRequestError("workspaceId is required for upload");
   }
 
-  const fileNameWithoutExt = req.file.originalname.replace(/\.[^/.]+$/, "");
-  const bomName = req.body.name || fileNameWithoutExt || "Uploaded BOM";
-  const version = req.body.version || "v1.0";
-  const instructions = req.body.instructions;
   const batchQuantity = req.body.batchQuantity ? Number(req.body.batchQuantity) : 1;
 
-  const parsed = await parseUploadedBOMFile(req.file);
-  const rawContent = parsed.type === "structured" ? parsed.data : parsed.markdown;
-
-  const agentResult = await runBOMAgent({
+  const result = await runBOMUploadAndAuditWorkflow({
+    file: req.file,
     workspaceId,
-    name: bomName,
-    version,
-    rawContent,
-    instructions,
-  });
-
-  if (!agentResult.bom) {
-    throw new InternalServerError("BOM Agent failed to persist BOM to database");
-  }
-
-  const auditResult = await runInventoryAuditAgent({
-    bomId: agentResult.bom.id,
+    name: req.body.name,
+    version: req.body.version,
+    instructions: req.body.instructions,
     batchQuantity,
   });
 
   return sendSuccess(
     res,
-    {
-      bom: agentResult.bom,
-      audit: auditResult,
-      bomAgentSummary: agentResult.agentSummary,
-    },
+    result,
     "BOM file uploaded, persisted, and audited against inventory successfully",
     201
   );

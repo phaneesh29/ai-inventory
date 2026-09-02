@@ -1,8 +1,8 @@
 import { ToolLoopAgent } from "ai";
 import { mistral } from "@ai-sdk/mistral";
-import { INVENTORY_AUDIT_INSTRUCTIONS } from "./audit.instructions.js";
-import { createInventoryAuditTools, SubstituteOption } from "./audit.tools.js";
-import { NotFoundError } from "../../utils/errors.js";
+import { INVENTORY_AUDIT_INSTRUCTIONS } from "./inventoryAudit.instructions.js";
+import { createInventoryAuditTools, SubstituteOption } from "./inventoryAudit.tools.js";
+import { NotFoundError } from "../../../utils/errors.js";
 
 export interface RunInventoryAuditParams {
   bomId: string;
@@ -94,7 +94,8 @@ Target Production Batch Multiplier: ${batchMultiplier} unit(s)
       inStockCount++;
     }
 
-    const itemBuildableRatio = item.requiredQuantity > 0 ? Math.floor(available / item.requiredQuantity) : Infinity;
+    const itemBuildableRatio =
+      item.requiredQuantity > 0 ? Math.floor(available / item.requiredQuantity) : Infinity;
     if (itemBuildableRatio < minBuildableRatio) {
       minBuildableRatio = itemBuildableRatio;
       bottleneckPart = {
@@ -120,7 +121,8 @@ Target Production Batch Multiplier: ${batchMultiplier} unit(s)
 
   const deficitItems = lineItems.filter((i) => i.deficitQuantity > 0);
   const totalLineItems = lineItems.length;
-  const readinessScore = totalLineItems > 0 ? Math.round((inStockCount / totalLineItems) * 100) : 100;
+  const readinessScore =
+    totalLineItems > 0 ? Math.round((inStockCount / totalLineItems) * 100) : 100;
   const maxBuildableUnits = minBuildableRatio === Infinity ? 0 : minBuildableRatio;
   const isReadyForProduction = deficitItems.length === 0;
 

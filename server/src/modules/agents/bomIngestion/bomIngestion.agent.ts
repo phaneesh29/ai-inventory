@@ -1,10 +1,10 @@
 import { ToolLoopAgent } from "ai";
 import { mistral } from "@ai-sdk/mistral";
-import { EnrichedBOM } from "./bom.service.js";
-import { BOM_AGENT_INSTRUCTIONS } from "./bom.instructions.js";
-import { createBOMTools } from "./bom.tools.js";
+import { EnrichedBOM } from "../../boms/bom.service.js";
+import { BOM_INGESTION_INSTRUCTIONS } from "./bomIngestion.instructions.js";
+import { createBOMIngestionTools } from "./bomIngestion.tools.js";
 
-export interface RunBOMAgentParams {
+export interface RunBOMIngestionParams {
   workspaceId: string;
   name: string;
   version?: string;
@@ -13,23 +13,28 @@ export interface RunBOMAgentParams {
   instructions?: string;
 }
 
-export interface BOMAgentResult {
+export interface BOMIngestionResult {
   bom: EnrichedBOM | null;
   agentSummary: string;
 }
 
-export const runBOMAgent = async (params: RunBOMAgentParams): Promise<BOMAgentResult> => {
-  const { tools, getCreatedBOM } = createBOMTools();
+export const runBOMIngestionAgent = async (
+  params: RunBOMIngestionParams
+): Promise<BOMIngestionResult> => {
+  const { tools, getCreatedBOM } = createBOMIngestionTools();
 
   const agent = new ToolLoopAgent({
     model: mistral("mistral-medium-latest"),
-    instructions: BOM_AGENT_INSTRUCTIONS,
+    instructions: BOM_INGESTION_INSTRUCTIONS,
     tools,
   });
 
-  const contentToProcess = params.rawContent !== undefined
-    ? (typeof params.rawContent === "string" ? params.rawContent : JSON.stringify(params.rawContent, null, 2))
-    : JSON.stringify(params.items || [], null, 2);
+  const contentToProcess =
+    params.rawContent !== undefined
+      ? typeof params.rawContent === "string"
+        ? params.rawContent
+        : JSON.stringify(params.rawContent, null, 2)
+      : JSON.stringify(params.items || [], null, 2);
 
   const result = await agent.generate({
     prompt: `Process and persist this BOM run:
