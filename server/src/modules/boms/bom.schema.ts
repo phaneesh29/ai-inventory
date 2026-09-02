@@ -30,7 +30,6 @@ export const BOMItemInputSchema = z.object({
   notes: z.string().trim().optional(),
 });
 
-
 export const CreateBOMSchema = z.object({
   workspaceId: z.uuid({ error: "Valid workspace UUID is required" }),
   name: z
@@ -42,6 +41,20 @@ export const CreateBOMSchema = z.object({
   items: z
     .array(BOMItemInputSchema, { error: "Items array is required" })
     .min(1, { error: "At least one BOM item is required" }),
+});
+
+export const ProcessBOMWithAgentSchema = z.object({
+  workspaceId: z.uuid({ error: "Valid workspace UUID is required" }),
+  name: z
+    .string({ error: "BOM name is required" })
+    .trim()
+    .min(2, { error: "BOM name must be at least 2 characters" })
+    .max(255),
+  version: z.string().trim().default("v1.0"),
+  items: z
+    .array(BOMItemInputSchema, { error: "Items array is required" })
+    .min(1, { error: "At least one BOM item is required" }),
+  instructions: z.string().trim().optional(),
 });
 
 export const UpdateBOMSchema = z.object({
@@ -70,5 +83,6 @@ export const RemoveBOMItemParamSchema = z.object({
 
 export type BOMItemInput = z.infer<typeof BOMItemInputSchema>;
 export type CreateBOMInput = z.infer<typeof CreateBOMSchema>;
+export type ProcessBOMWithAgentInput = z.infer<typeof ProcessBOMWithAgentSchema>;
 export type UpdateBOMInput = z.infer<typeof UpdateBOMSchema>;
 export type AddBOMItemsInput = z.infer<typeof AddBOMItemsSchema>;

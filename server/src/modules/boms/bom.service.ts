@@ -69,9 +69,7 @@ export const batchUpsertMasterItems = async (
   return itemMap;
 };
 
-
 export const createBOM = async (input: CreateBOMInput): Promise<EnrichedBOM> => {
-
   const [workspace] = await db
     .select()
     .from(workspacesTable)
@@ -132,7 +130,6 @@ export const createBOM = async (input: CreateBOMInput): Promise<EnrichedBOM> => 
   };
 };
 
-
 export const findBOMsByWorkspaceId = async (
   workspaceId: string
 ): Promise<Array<BOM & { totalItems: number }>> => {
@@ -164,7 +161,6 @@ export const findBOMsByWorkspaceId = async (
 
   return boms;
 };
-
 
 export const findBOMById = async (id: string): Promise<EnrichedBOM> => {
   const [bom] = await db
@@ -201,7 +197,6 @@ export const findBOMById = async (id: string): Promise<EnrichedBOM> => {
   };
 };
 
-
 export const updateBOM = async (id: string, input: UpdateBOMInput): Promise<BOM> => {
   await findBOMById(id);
 
@@ -218,7 +213,6 @@ export const updateBOM = async (id: string, input: UpdateBOMInput): Promise<BOM>
   return updatedBOM;
 };
 
-
 export const addItemsToBOM = async (
   bomId: string,
   input: AddBOMItemsInput
@@ -226,7 +220,6 @@ export const addItemsToBOM = async (
   await findBOMById(bomId);
 
   const itemMap = await batchUpsertMasterItems(input.items);
-
 
   const bomItemRows = input.items.map((itemInput) => ({
     bomId,
@@ -240,7 +233,6 @@ export const addItemsToBOM = async (
 
   return findBOMById(bomId);
 };
-
 
 export const removeItemFromBOM = async (
   bomId: string,
@@ -261,7 +253,6 @@ export const removeItemFromBOM = async (
 
   return { deleted: true };
 };
-
 
 export const deleteBOM = async (id: string): Promise<{ id: string; deleted: boolean }> => {
   await findBOMById(id);

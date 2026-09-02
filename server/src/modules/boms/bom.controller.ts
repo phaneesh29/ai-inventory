@@ -1,12 +1,19 @@
 import { Request, Response } from "express";
 import * as bomService from "./bom.service.js";
+import { runBOMAgent } from "./bom.agent.js";
 import { sendSuccess } from "../../utils/apiResponse.js";
-import type { CreateBOMInput, UpdateBOMInput, AddBOMItemsInput } from "./bom.schema.js";
+import type { CreateBOMInput, UpdateBOMInput, AddBOMItemsInput, ProcessBOMWithAgentInput } from "./bom.schema.js";
 
 export const createBOM = async (req: Request, res: Response): Promise<Response> => {
   const body = req.body as CreateBOMInput;
   const result = await bomService.createBOM(body);
   return sendSuccess(res, result, "BOM created successfully", 201);
+};
+
+export const processBOMWithAgent = async (req: Request, res: Response): Promise<Response> => {
+  const body = req.body as ProcessBOMWithAgentInput;
+  const result = await runBOMAgent(body);
+  return sendSuccess(res, result, "BOM audited, enriched and persisted by Agent", 201);
 };
 
 export const getBOMsByWorkspace = async (req: Request, res: Response): Promise<Response> => {

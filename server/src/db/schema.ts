@@ -1,4 +1,4 @@
-import { pgTable, varchar, timestamp, text, jsonb, uuid, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, doublePrecision, jsonb } from "drizzle-orm/pg-core";
 
 export const workspacesTable = pgTable("workspaces", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -9,12 +9,12 @@ export const workspacesTable = pgTable("workspaces", {
 
 export const itemsTable = pgTable("items", {
   id: uuid("id").defaultRandom().primaryKey(),
-  partNumber: varchar("part_number", { length: 100 }).notNull().unique(),
+  partNumber: varchar("part_number", { length: 100 }).unique().notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  category: varchar("category", { length: 100 }).notNull(), // 'Wafer' | 'Chemical' | 'Wire' | 'Substrate' | 'IC' | 'Passive'
-  unit: varchar("unit", { length: 50 }).notNull(), // 'wafers' | 'meters' | 'liters' | 'pcs' | 'kg'
-  specifications: jsonb("specifications").$type<Record<string, any>>().default({}).notNull(), // voltage, purity, tolerance, package, tempRange
+  category: varchar("category", { length: 100 }).notNull(),
+  unit: varchar("unit", { length: 50 }).notNull(),
+  specifications: jsonb("specifications").$type<Record<string, any>>().default({}).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -39,7 +39,7 @@ export const bomItemsTable = pgTable("bom_items", {
     .references(() => itemsTable.id, { onDelete: "restrict" })
     .notNull(),
   quantity: doublePrecision("quantity").notNull(),
-  referenceDesignator: varchar("reference_designator", { length: 100 }), // e.g., 'U1', 'C12', 'DIE-1'
+  referenceDesignator: varchar("reference_designator", { length: 100 }),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

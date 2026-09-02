@@ -17,13 +17,13 @@ import {
 const router = Router();
 
 router.get("/", validate({ query: ListWorkspacesQuerySchema }), getAllWorkspaces);
-
 router.post("/", validate({ body: CreateWorkspaceSchema }), createWorkspace);
-
 router.get("/:id", validate({ params: WorkspaceIdParamSchema }), getWorkspaceById);
-
-router.patch("/:id", validate({ params: WorkspaceIdParamSchema, body: UpdateWorkspaceSchema }), updateWorkspace);
-
+router.patch(
+  "/:id",
+  validate({ params: WorkspaceIdParamSchema, body: UpdateWorkspaceSchema }),
+  updateWorkspace
+);
 router.delete("/:id", validate({ params: WorkspaceIdParamSchema }), deleteWorkspace);
 
 export default router;
