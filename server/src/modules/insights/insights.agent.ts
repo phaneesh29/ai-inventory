@@ -75,7 +75,7 @@ Format as a clean markdown table:
 (Summarize DigiKey, Mouser, LCSC with their lead times and role).`;
 
   const response = await generateText({
-    model: mistral("mistral-small-latest"),
+    model: mistral("codestral-latest"),
     prompt,
   });
 

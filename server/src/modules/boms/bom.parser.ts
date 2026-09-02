@@ -20,17 +20,21 @@ export const parseUploadedBOMFile = async (file: Express.Multer.File): Promise<P
     }
   }
 
-  if (ext === "csv") {
+  if (ext === "csv" || ext === "txt") {
+    const rawText = file.buffer.toString("utf-8");
     try {
-      const records = parse(file.buffer.toString("utf-8"), {
+      const records = parse(rawText, {
         columns: true,
         skip_empty_lines: true,
         trim: true,
+        relax_column_count: true,
       });
-      return { type: "structured", data: records };
-    } catch (err: any) {
-      throw new BadRequestError(`Failed to parse CSV file: ${err.message}`);
-    }
+      if (Array.isArray(records) && records.length > 0) {
+        return { type: "structured", data: records };
+      }
+    } catch {}
+
+    return { type: "unstructured", markdown: rawText };
   }
 
   if (ext === "xlsx" || ext === "xls") {

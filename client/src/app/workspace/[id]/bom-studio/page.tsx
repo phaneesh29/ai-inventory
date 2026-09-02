@@ -147,11 +147,11 @@ export default function BOMStudioPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const validExts = [".csv", ".xlsx", ".xls"];
+      const validExts = [".csv", ".xlsx", ".xls", ".txt"];
       const hasValidExt = validExts.some((ext) => file.name.toLowerCase().endsWith(ext));
 
       if (!hasValidExt) {
-        toast.error("Invalid File Type", "Please upload a .csv, .xlsx, or .xls file.");
+        toast.error("Invalid File Type", "Please upload a .csv, .xlsx, .xls, or .txt file.");
         return;
       }
 
@@ -477,13 +477,13 @@ export default function BOMStudioPage() {
 
                   <div className="space-y-2">
                     <label className="text-[11px] font-medium text-[#d0d6e0]">
-                      BOM File (.csv, .xlsx, .xls) <span className="text-[#f87171]">*</span>
+                      BOM File (.csv, .xlsx, .xls, .txt) <span className="text-[#f87171]">*</span>
                     </label>
 
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".csv,.xlsx,.xls"
+                      accept=".csv,.xlsx,.xls,.txt"
                       onChange={handleFileChange}
                       className="hidden"
                     />
@@ -498,7 +498,7 @@ export default function BOMStudioPage() {
                           Click to browse or drop Bill of Materials file
                         </p>
                         <p className="text-[10px] text-[#8a8f98] mt-1">
-                          Supports standard export schemas from Altium Designer, KiCad, Eagle, OrCAD, and Excel
+                          Supports standard export schemas from Altium Designer, KiCad, Eagle, OrCAD, and plain text (.txt)
                         </p>
                       </div>
                     ) : (

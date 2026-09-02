@@ -7,6 +7,7 @@ const allowedExtensions = new Set([
   "xlsx",
   "xls",
   "csv",
+  "txt",
   "json",
   "pdf",
   "docx",
@@ -26,7 +27,7 @@ export const upload = multer({
     if (allowedExtensions.has(ext)) {
       cb(null, true);
     } else {
-      cb(new BadRequestError(`Unsupported file format '.${ext}'. Allowed: xlsx, xls, csv, json, pdf, docx, png, jpg, webp`));
+      cb(new BadRequestError(`Unsupported file format '.${ext}'. Allowed: xlsx, xls, csv, txt, json, pdf, docx, png, jpg, webp`));
     }
   },
 });

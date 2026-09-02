@@ -67,7 +67,7 @@ export const runAlternativeMatcherAgent = async (
   const { tools, getCachedData } = createAlternativeMatcherTools();
 
   const agent = new ToolLoopAgent({
-    model: mistral("mistral-large-latest"),
+    model: mistral("codestral-latest"),
     instructions: ALTERNATIVE_MATCHER_INSTRUCTIONS,
     tools,
   });

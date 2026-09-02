@@ -75,11 +75,11 @@ export default function WorkspacePortalPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const validExts = [".csv", ".xlsx", ".xls"];
+      const validExts = [".csv", ".xlsx", ".xls", ".txt"];
       const hasValidExt = validExts.some((ext) => file.name.toLowerCase().endsWith(ext));
 
       if (!hasValidExt) {
-        toast.error("Invalid File Type", "Please upload a .csv, .xlsx, or .xls file.");
+        toast.error("Invalid File Type", "Please upload a .csv, .xlsx, .xls, or .txt file.");
         return;
       }
       setSelectedFile(file);
@@ -289,7 +289,7 @@ export default function WorkspacePortalPage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".csv,.xlsx,.xls"
+                    accept=".csv,.xlsx,.xls,.txt"
                     onChange={handleFileChange}
                     className="hidden"
                   />
@@ -304,7 +304,7 @@ export default function WorkspacePortalPage() {
                         Click to browse or drop Bill of Materials
                       </p>
                       <p className="text-[10px] text-[#8a8f98] mt-0.5">
-                        Supports standard .CSV, .XLSX, or .XLS exports (Altium, KiCad, Eagle, Excel)
+                        Supports standard .CSV, .TXT, .XLSX, or .XLS exports (Altium, KiCad, Eagle, Excel)
                       </p>
                     </div>
                   ) : (
