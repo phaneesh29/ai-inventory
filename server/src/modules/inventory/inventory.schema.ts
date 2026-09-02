@@ -4,6 +4,11 @@ export const AddInventoryItemSchema = z
   .object({
     itemId: z.uuid({ error: "Invalid item UUID" }).optional(),
     partNumber: z.string().trim().min(1, { error: "Part number cannot be empty" }).optional(),
+    name: z.string().trim().min(1).optional(),
+    description: z.string().trim().optional(),
+    category: z.string().trim().min(1).optional(),
+    unit: z.string().trim().min(1).optional(),
+    specifications: z.record(z.string(), z.any()).optional(),
     quantityOnHand: z
       .number({ error: "Quantity on hand must be a number" })
       .min(0, { error: "Quantity on hand cannot be negative" })

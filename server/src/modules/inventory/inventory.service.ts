@@ -130,15 +130,27 @@ export const addInventoryItem = async (data: AddInventoryItemInput): Promise<Enr
       .from(itemsTable)
       .where(eq(itemsTable.partNumber, data.partNumber));
 
-    if (!foundItem) {
-      throw new NotFoundError(`Item with part number '${data.partNumber}' not found in master catalog`);
-    }
+    if (foundItem) {
+      resolvedItemId = foundItem.id;
+    } else {
+      const [createdItem] = await db
+        .insert(itemsTable)
+        .values({
+          partNumber: data.partNumber,
+          name: data.name || data.partNumber,
+          description: data.description || null,
+          category: data.category || "Other",
+          unit: data.unit || "pcs",
+          specifications: data.specifications || {},
+        })
+        .returning({ id: itemsTable.id });
 
-    resolvedItemId = foundItem.id;
+      resolvedItemId = createdItem.id;
+    }
   }
 
   if (!resolvedItemId) {
-    throw new BadRequestError("Item ID could not be resolved");
+    throw new BadRequestError("Item ID or Part Number must be provided");
   }
 
   const [existingRecord] = await db
