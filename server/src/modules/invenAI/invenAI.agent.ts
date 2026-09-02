@@ -1,4 +1,4 @@
-import { ToolLoopAgent, type ModelMessage } from "ai";
+import { ToolLoopAgent } from "ai";
 import { mistral } from "@ai-sdk/mistral";
 import { INVEN_AI_INSTRUCTIONS } from "./invenAI.instructions.js";
 import { createInvenAITools } from "./invenAI.tools.js";
@@ -17,12 +17,5 @@ export const createInvenAIAgent = () => {
       addSupplierCatalogItem: "user-approval",
       receivePurchaseOrderShipment: "user-approval",
     },
-  });
-};
-
-export const generateInvenAIChat = async (messages: ModelMessage[]) => {
-  const agent = createInvenAIAgent();
-  return agent.generate({
-    messages,
   });
 };

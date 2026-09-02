@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as bomService from "./bom.service.js";
-import { runBOMUploadAndAuditWorkflow } from "../agents/bomWorkflow.service.js";
+import { runBOMUploadAndAuditWorkflow, approveBOMProcessWorkflow } from "../agents/bomWorkflow.service.js";
 import { sendSuccess } from "../../utils/apiResponse.js";
 import { BadRequestError } from "../../utils/errors.js";
 import type {

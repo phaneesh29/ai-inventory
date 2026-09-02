@@ -1,5 +1,5 @@
 import { eq, desc, inArray, sql } from "drizzle-orm";
-import { db, bomsTable, bomItemsTable, itemsTable, workspacesTable, BOM, Item } from "../../db/index.js";
+import { db, bomsTable, bomItemsTable, itemsTable, workspacesTable, inventoryTable, BOM, Item } from "../../db/index.js";
 import { NotFoundError } from "../../utils/errors.js";
 import type { CreateBOMInput, UpdateBOMInput, AddBOMItemsInput, BOMItemInput } from "./bom.schema.js";
 

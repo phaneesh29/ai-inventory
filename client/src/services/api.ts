@@ -1059,20 +1059,73 @@ export interface InvenAIChatResult {
   };
 }
 
-export const sendInvenAIChat = async (
-  messages: Array<{ role: string; content: string }>
-): Promise<InvenAIChatResult> => {
+export const streamInvenAIChat = async (
+  messages: Array<{ role: string; content: string }>,
+  onTextDelta: (delta: string) => void,
+  onToolCall: (toolCall: { toolCallId: string; toolName: string; input?: any }) => void,
+  onToolResult: (toolResult: { toolCallId: string; output: any }) => void,
+  signal?: AbortSignal
+): Promise<string> => {
+  const uiMessages = messages.map((m, idx) => ({
+    id: `msg-${idx}`,
+    role: m.role,
+    parts: [{ type: "text", text: m.content }],
+  }));
+
   const res = await fetch(`${API_BASE_URL}/inven-ai/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages: uiMessages }),
+    signal,
   });
-  const json: ApiResponse<InvenAIChatResult> = await res.json();
-  if (!json.success) {
-    throw new Error(json.error?.message || "Failed to generate InvenAI response");
+
+  if (!res.ok || !res.body) {
+    throw new Error(`Streaming failed: HTTP ${res.status}`);
   }
-  return json.data;
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText = "";
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith("data: ")) continue;
+      const dataStr = trimmed.slice(6).trim();
+      if (dataStr === "[DONE]") break;
+
+      try {
+        const parsed = JSON.parse(dataStr);
+        if (parsed.type === "text-delta" && typeof parsed.delta === "string") {
+          fullText += parsed.delta;
+          onTextDelta(parsed.delta);
+        } else if (parsed.type === "tool-input-available") {
+          onToolCall({
+            toolCallId: parsed.toolCallId,
+            toolName: parsed.toolName,
+            input: parsed.input,
+          });
+        } else if (parsed.type === "tool-output-available") {
+          onToolResult({
+            toolCallId: parsed.toolCallId,
+            output: parsed.output,
+          });
+        }
+      } catch {}
+    }
+  }
+
+  return fullText;
 };
+
 
 
 

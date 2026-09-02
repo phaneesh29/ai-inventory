@@ -34,7 +34,7 @@ export const getInventory = async (req: Request, res: Response): Promise<Respons
   );
 };
 
-export const getLowStockAlerts = async (req: Request, res: Response): Promise<Response> => {
+export const getLowStockAlerts = async (_req: Request, res: Response): Promise<Response> => {
   const result = await findLowStockAlerts();
   return sendSuccess(res, result, "Low stock alerts retrieved successfully");
 };

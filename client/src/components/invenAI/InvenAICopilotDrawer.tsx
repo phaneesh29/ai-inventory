@@ -2,13 +2,12 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
-  sendInvenAIChat,
+  streamInvenAIChat,
   type InvenAIChatMessage,
   type InvenAIStep,
 } from "@/services/api";
 import { useToast } from "@/context/ToastContext";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
-import { Button } from "@/components/ui/Button";
 import {
   Sparkles,
   X,
@@ -140,37 +139,118 @@ export const InvenAICopilotDrawer: React.FC = () => {
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
-    const newHistory = [...messages, userMessage];
-    setMessages(newHistory);
+    const aiMessageId = `ai-${Date.now()}`;
+    const initialAssistantMessage: MessageItem = {
+      id: aiMessageId,
+      role: "assistant",
+      content: "",
+      steps: [],
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    const historyWithUser = [...messages, userMessage];
+    setMessages([...historyWithUser, initialAssistantMessage]);
     setInput("");
     setIsLoading(true);
 
     try {
-      const payloadMessages = newHistory.map((m) => ({
+      const payloadMessages = historyWithUser.map((m) => ({
         role: m.role,
         content: m.content,
       }));
 
-      const response = await sendInvenAIChat(payloadMessages);
+      await streamInvenAIChat(
+        payloadMessages,
+        (delta) => {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === aiMessageId
+                ? { ...msg, content: msg.content + delta }
+                : msg
+            )
+          );
+        },
+        (toolCall) => {
+          setMessages((prev) =>
+            prev.map((msg) => {
+              if (msg.id !== aiMessageId) return msg;
+              const existingSteps = msg.steps || [];
+              const stepIndex = existingSteps.length > 0 ? existingSteps.length - 1 : 0;
+              const currentStep = existingSteps[stepIndex] || {
+                text: "",
+                toolCalls: [],
+                toolResults: [],
+                finishReason: "tool-calls",
+              };
 
-      const assistantMessage: MessageItem = {
-        id: `ai-${Date.now()}`,
-        role: "assistant",
-        content: response.text,
-        steps: response.steps,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
+              const updatedStep = {
+                ...currentStep,
+                toolCalls: [
+                  ...currentStep.toolCalls.filter((tc) => tc.toolCallId !== toolCall.toolCallId),
+                  {
+                    type: "tool-call",
+                    toolCallId: toolCall.toolCallId,
+                    toolName: toolCall.toolName,
+                    input: toolCall.input || {},
+                  },
+                ],
+              };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+              const updatedSteps = [...existingSteps];
+              updatedSteps[stepIndex] = updatedStep;
+
+              return { ...msg, steps: updatedSteps };
+            })
+          );
+        },
+        (toolResult) => {
+          setMessages((prev) =>
+            prev.map((msg) => {
+              if (msg.id !== aiMessageId) return msg;
+              const existingSteps = msg.steps || [];
+              const stepIndex = existingSteps.length > 0 ? existingSteps.length - 1 : 0;
+              const currentStep = existingSteps[stepIndex] || {
+                text: "",
+                toolCalls: [],
+                toolResults: [],
+                finishReason: "tool-calls",
+              };
+
+              const matchingCall = currentStep.toolCalls.find(
+                (tc) => tc.toolCallId === toolResult.toolCallId
+              );
+
+              const updatedStep = {
+                ...currentStep,
+                toolResults: [
+                  ...currentStep.toolResults.filter((tr) => tr.toolCallId !== toolResult.toolCallId),
+                  {
+                    type: "tool-result",
+                    toolCallId: toolResult.toolCallId,
+                    toolName: matchingCall?.toolName || "",
+                    input: matchingCall?.input || {},
+                    output: toolResult.output,
+                  },
+                ],
+              };
+
+              const updatedSteps = [...existingSteps];
+              updatedSteps[stepIndex] = updatedStep;
+
+              return { ...msg, steps: updatedSteps };
+            })
+          );
+        }
+      );
     } catch (err: any) {
       toast.error("InvenAI Error", err.message);
-      const errorMessage: MessageItem = {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        content: `⚠️ **Error:** Unable to process request. (${err.message})`,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === aiMessageId && !msg.content
+            ? { ...msg, content: `⚠️ **Error:** Unable to process request. (${err.message})` }
+            : msg
+        )
+      );
     } finally {
       setIsLoading(false);
     }
@@ -383,24 +463,26 @@ export const InvenAICopilotDrawer: React.FC = () => {
                       </div>
                     )}
 
-                    <div
-                      className={`rounded-2xl p-3.5 max-w-[90%] ${
-                        m.role === "user"
-                          ? "bg-[#5e6ad2] text-white rounded-br-xs"
-                          : "bg-[#010102] border border-[#23252a] text-[#d0d6e0] rounded-bl-xs"
-                      }`}
-                    >
-                      {m.role === "user" ? (
-                        <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
-                      ) : (
-                        <MarkdownRenderer content={m.content} />
-                      )}
-                    </div>
+                    {m.content ? (
+                      <div
+                        className={`rounded-2xl p-3.5 max-w-[90%] ${
+                          m.role === "user"
+                            ? "bg-[#5e6ad2] text-white rounded-br-xs"
+                            : "bg-[#010102] border border-[#23252a] text-[#d0d6e0] rounded-bl-xs"
+                        }`}
+                      >
+                        {m.role === "user" ? (
+                          <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                        ) : (
+                          <MarkdownRenderer content={m.content} />
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 ))
               )}
 
-              {isLoading && (
+              {isLoading && (!messages[messages.length - 1] || messages[messages.length - 1].role === "user" || !messages[messages.length - 1].content) && (
                 <div className="flex items-start gap-2.5">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#5e6ad2]/20 border border-[#5e6ad2]/40 text-[#828fff]">
                     <Sparkles className="h-3.5 w-3.5 animate-spin" />

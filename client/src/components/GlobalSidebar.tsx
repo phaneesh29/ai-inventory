@@ -108,8 +108,8 @@ export const GlobalSidebar: React.FC = () => {
       >
         <div className="flex h-full flex-col justify-between p-3 bg-[#0f1011]">
           <div className="space-y-4">
-            <div className="flex items-center justify-between px-1">
-              {!isCollapsed ? (
+            <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-between"} px-1`}>
+              {!isCollapsed && (
                 <Link
                   href="/"
                   className="flex items-center gap-2.5 transition-opacity hover:opacity-90"
@@ -128,21 +128,13 @@ export const GlobalSidebar: React.FC = () => {
                     </p>
                   </div>
                 </Link>
-              ) : (
-                <Link
-                  href="/"
-                  className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-[#14172e] border border-[#282d5c] text-[#828fff] transition-opacity hover:opacity-90"
-                  title="INVEN.AI Platform"
-                >
-                  <Cpu className="h-4 w-4" />
-                </Link>
               )}
 
               <button
                 type="button"
                 onClick={toggleCollapsed}
                 className={`p-1.5 text-[#8a8f98] hover:text-[#f7f8f8] hover:bg-[#141516] rounded-md transition-colors ${
-                  isCollapsed ? "mx-auto mt-2 block" : ""
+                  isCollapsed ? "mx-auto block" : ""
                 }`}
                 title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
               >
