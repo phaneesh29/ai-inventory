@@ -101,6 +101,36 @@ export const supplierItemsTable = pgTable(
   ]
 );
 
+export const purchaseOrdersTable = pgTable("purchase_orders", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  poNumber: varchar("po_number", { length: 50 }).unique().notNull(),
+  supplierId: uuid("supplier_id")
+    .references(() => suppliersTable.id, { onDelete: "restrict" })
+    .notNull(),
+  status: varchar("status", { length: 50 }).default("DRAFT").notNull(),
+  totalAmount: doublePrecision("total_amount").default(0).notNull(),
+  currency: varchar("currency", { length: 10 }).default("USD").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const purchaseOrderItemsTable = pgTable("purchase_order_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  purchaseOrderId: uuid("purchase_order_id")
+    .references(() => purchaseOrdersTable.id, { onDelete: "cascade" })
+    .notNull(),
+  itemId: uuid("item_id")
+    .references(() => itemsTable.id, { onDelete: "restrict" })
+    .notNull(),
+  supplierPartNumber: varchar("supplier_part_number", { length: 100 }).notNull(),
+  quantity: doublePrecision("quantity").notNull(),
+  unitPrice: doublePrecision("unit_price").notNull(),
+  totalPrice: doublePrecision("total_price").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type Workspace = typeof workspacesTable.$inferSelect;
 export type NewWorkspace = typeof workspacesTable.$inferInsert;
 
@@ -121,3 +151,9 @@ export type NewSupplier = typeof suppliersTable.$inferInsert;
 
 export type SupplierItem = typeof supplierItemsTable.$inferSelect;
 export type NewSupplierItem = typeof supplierItemsTable.$inferInsert;
+
+export type PurchaseOrder = typeof purchaseOrdersTable.$inferSelect;
+export type NewPurchaseOrder = typeof purchaseOrdersTable.$inferInsert;
+
+export type PurchaseOrderItem = typeof purchaseOrderItemsTable.$inferSelect;
+export type NewPurchaseOrderItem = typeof purchaseOrderItemsTable.$inferInsert;
