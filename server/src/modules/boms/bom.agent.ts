@@ -35,7 +35,7 @@ export const runBOMAgent = async (params: RunBOMAgentParams): Promise<BOMAgentRe
   const { tools, getCreatedBOM } = createBOMTools();
 
   const agent = new ToolLoopAgent({
-    model: mistral("mistral-large-latest"),
+    model: mistral("mistral-medium-latest"),
     instructions: BOM_AGENT_INSTRUCTIONS,
     tools,
   });
