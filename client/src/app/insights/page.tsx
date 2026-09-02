@@ -142,7 +142,7 @@ export default function InsightsPage() {
               <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8a8f98]">
                 Autonomous Supply Chain Intelligence
               </span>
-              <Badge variant="primary">InvenAI Analytics v2.0</Badge>
+              <Badge variant="primary">InvenAI Analytics</Badge>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-[#f7f8f8] sm:text-3xl mt-1">
               AI Insights & Anomaly Forecasting
