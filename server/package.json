@@ -25,7 +25,9 @@
   "author": "AI Inventory Team",
   "license": "MIT",
   "dependencies": {
+    "@ai-sdk/mistral": "^4.0.39",
     "@neondatabase/serverless": "^1.1.0",
+    "ai": "^7.0.90",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

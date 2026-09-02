@@ -5,7 +5,12 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(5000),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
-  DATABASE_URL: z.string({ error: "DATABASE_URL is required" }).min(1, { error: "DATABASE_URL cannot be empty" }),
+  DATABASE_URL: z
+    .string({ error: "DATABASE_URL is required" })
+    .min(1, { error: "DATABASE_URL cannot be empty" }),
+  MISTRAL_API_KEY: z
+    .string({ error: "MISTRAL_API_KEY is required" })
+    .min(1, { error: "MISTRAL_API_KEY cannot be empty" }),
   CORS_ORIGINS: z
     .string()
     .default("http://localhost:3000,http://localhost:5173")
