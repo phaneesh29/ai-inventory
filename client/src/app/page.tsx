@@ -1,19 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   fetchWorkspaces,
   createWorkspace,
   updateWorkspace,
   deleteWorkspace,
+  uploadBOMFile,
   type Workspace,
 } from "@/services/api";
 import { useToast } from "@/context/ToastContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Badge } from "@/components/ui/Badge";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
   Plus,
@@ -26,9 +27,13 @@ import {
   FolderPlus,
   Pencil,
   X,
+  FileSpreadsheet,
+  UploadCloud,
+  FileCheck,
 } from "lucide-react";
 
 export default function WorkspacePortalPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,8 +41,12 @@ export default function WorkspacePortalPage() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [batchQuantity, setBatchQuantity] = useState<number>(1);
+  const [instructions, setInstructions] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
   const [editName, setEditName] = useState("");
@@ -63,6 +72,20 @@ export default function WorkspacePortalPage() {
     loadWorkspaces();
   }, []);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const validExts = [".csv", ".xlsx", ".xls"];
+      const hasValidExt = validExts.some((ext) => file.name.toLowerCase().endsWith(ext));
+
+      if (!hasValidExt) {
+        toast.error("Invalid File Type", "Please upload a .csv, .xlsx, or .xls file.");
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
@@ -70,11 +93,36 @@ export default function WorkspacePortalPage() {
     try {
       setIsSubmitting(true);
       setCreateError(null);
+
       const created = await createWorkspace(newName.trim());
+
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("workspaceId", created.id);
+        formData.append("name", `${created.name} BOM`);
+        formData.append("version", "v1.0");
+        formData.append("batchQuantity", String(batchQuantity || 1));
+        if (instructions.trim()) {
+          formData.append("instructions", instructions.trim());
+        }
+
+        await uploadBOMFile(formData);
+        toast.success(
+          "Workspace & BOM Created",
+          `"${created.name}" created and BOM uploaded with AI audit.`
+        );
+      } else {
+        toast.success("Workspace Created", `"${created.name}" is ready for BOM runs.`);
+      }
+
       setNewName("");
+      setSelectedFile(null);
+      setBatchQuantity(1);
+      setInstructions("");
       setIsCreating(false);
-      toast.success("Workspace Created", `"${created.name}" is ready for BOM runs.`);
-      await loadWorkspaces();
+
+      router.push(`/workspace/${created.id}`);
     } catch (err: any) {
       setCreateError(err.message || "Failed to create workspace");
       toast.error("Creation Failed", err.message);
@@ -194,15 +242,15 @@ export default function WorkspacePortalPage() {
                 </div>
               </CardTitle>
               <CardDescription>
-                Define an isolated workspace for your hardware team (e.g. UAV Flight Controller, Smart Robotics PCB).
+                Define an isolated workspace for your hardware team. You can also optionally attach your initial BOM file right now.
               </CardDescription>
             </CardHeader>
 
             <CardContent>
-              <form onSubmit={handleCreate} className="space-y-3">
+              <form onSubmit={handleCreate} className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-[11px] font-medium text-[#d0d6e0]">
-                    Workspace Name
+                    Workspace Name <span className="text-[#f87171]">*</span>
                   </label>
                   <Input
                     autoFocus
@@ -215,6 +263,95 @@ export default function WorkspacePortalPage() {
                   )}
                 </div>
 
+                <div className="rounded-xl border border-[#23252a] bg-[#090a0f] p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileSpreadsheet className="h-4 w-4 text-[#828fff]" />
+                      <span className="text-xs font-semibold text-[#f7f8f8]">
+                        Initial BOM File <span className="text-[10px] text-[#8a8f98] font-normal">(Optional)</span>
+                      </span>
+                    </div>
+                    {selectedFile && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                        className="text-[10px] text-[#8a8f98] hover:text-[#f87171] flex items-center gap-1 cursor-pointer"
+                      >
+                        <X className="h-3 w-3" />
+                        <span>Remove File</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+
+                  {!selectedFile ? (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border border-dashed border-[#23252a] hover:border-[#5e6ad2]/60 rounded-xl p-4 text-center cursor-pointer transition-colors bg-[#010102]/60 hover:bg-[#141516]"
+                    >
+                      <UploadCloud className="h-6 w-6 text-[#8a8f98] mx-auto mb-1.5" />
+                      <p className="text-xs font-medium text-[#f7f8f8]">
+                        Click to browse or drop Bill of Materials
+                      </p>
+                      <p className="text-[10px] text-[#8a8f98] mt-0.5">
+                        Supports standard .CSV, .XLSX, or .XLS exports (Altium, KiCad, Eagle, Excel)
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between rounded-lg bg-[#14172e] border border-[#282d5c] p-3 text-xs">
+                      <div className="flex items-center gap-2.5 overflow-hidden">
+                        <FileCheck className="h-4 w-4 text-[#4ade80] shrink-0" />
+                        <div className="overflow-hidden">
+                          <span className="font-semibold text-[#f7f8f8] block truncate">
+                            {selectedFile.name}
+                          </span>
+                          <span className="text-[10px] text-[#8a8f98]">
+                            {(selectedFile.size / 1024).toFixed(1)} KB • Ready for AI Pipeline
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedFile && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-medium text-[#8a8f98]">
+                          Target Batch Units
+                        </label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={batchQuantity}
+                          onChange={(e) => setBatchQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-medium text-[#8a8f98]">
+                          Assembly Directives (Optional)
+                        </label>
+                        <Input
+                          placeholder="e.g. High-temperature reflow, AEC-Q200 only"
+                          value={instructions}
+                          onChange={(e) => setInstructions(e.target.value)}
+                          className="text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-end gap-2 pt-2">
                   <Button
                     type="button"
@@ -223,6 +360,7 @@ export default function WorkspacePortalPage() {
                     onClick={() => {
                       setIsCreating(false);
                       setNewName("");
+                      setSelectedFile(null);
                     }}
                   >
                     Cancel
@@ -236,7 +374,7 @@ export default function WorkspacePortalPage() {
                     isLoading={isSubmitting}
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    <span>Create & Launch</span>
+                    <span>{selectedFile ? "Create & Upload BOM" : "Create & Launch"}</span>
                   </Button>
                 </div>
               </form>
@@ -255,7 +393,7 @@ export default function WorkspacePortalPage() {
                 <button
                   type="button"
                   onClick={() => setEditingWorkspace(null)}
-                  className="p-1 text-[#8a8f98] hover:text-white"
+                  className="p-1 text-[#8a8f98] hover:text-white cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -357,7 +495,7 @@ export default function WorkspacePortalPage() {
                     <button
                       type="button"
                       onClick={(e) => handleOpenEdit(ws, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 text-[#8a8f98] hover:text-[#5e6ad2] hover:bg-[#14172e] rounded-md transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-[#8a8f98] hover:text-[#5e6ad2] hover:bg-[#14172e] rounded-md transition-all cursor-pointer"
                       title="Edit Workspace"
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -370,7 +508,7 @@ export default function WorkspacePortalPage() {
                         e.stopPropagation();
                         setDeletingWorkspace(ws);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded-md transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded-md transition-all cursor-pointer"
                       title="Delete Workspace"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
