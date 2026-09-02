@@ -7,6 +7,7 @@ import {
   createPurchaseOrder,
   updatePurchaseOrderStatus,
   receivePurchaseOrder,
+  deletePurchaseOrder,
   fetchSuppliers,
   fetchItems,
   type PurchaseOrder,
@@ -25,20 +26,13 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Truck,
   CheckCircle2,
   Clock,
-  AlertTriangle,
   ArrowRight,
   PackageCheck,
-  Building2,
-  Layers,
   DollarSign,
   X,
-  Boxes,
-  Calendar,
-  ShieldCheck,
-  TrendingUp,
+  Trash2,
 } from "lucide-react";
 
 export default function PurchaseOrdersPage() {
@@ -53,6 +47,9 @@ export default function PurchaseOrdersPage() {
   const [items, setItems] = useState<Item[]>([]);
 
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
+
+  const [deletingPO, setDeletingPO] = useState<PurchaseOrder | null>(null);
+  const [isDeletingPO, setIsDeletingPO] = useState(false);
 
   const [isCreatingPO, setIsCreatingPO] = useState(false);
   const [poSupplierId, setPoSupplierId] = useState("");
@@ -70,8 +67,6 @@ export default function PurchaseOrdersPage() {
   const [receiveNotes, setReceiveNotes] = useState("");
   const [isSubmittingReceive, setIsSubmittingReceive] = useState(false);
   const [receiveResult, setReceiveResult] = useState<ReceivePurchaseOrderResult | null>(null);
-
-  const [updatingStatusPO, setUpdatingStatusPO] = useState<{ id: string; status: string } | null>(null);
 
   const loadData = async () => {
     try {
@@ -251,6 +246,23 @@ export default function PurchaseOrdersPage() {
       await loadData();
     } catch (err: any) {
       toast.error("Status Update Failed", err.message);
+    }
+  };
+
+  const handleConfirmDeletePO = async () => {
+    if (!deletingPO) return;
+
+    try {
+      setIsDeletingPO(true);
+      await deletePurchaseOrder(deletingPO.id);
+      toast.success("Purchase Order Deleted", `${deletingPO.poNumber} was deleted.`);
+      if (selectedPO?.id === deletingPO.id) setSelectedPO(null);
+      setDeletingPO(null);
+      await loadData();
+    } catch (err: any) {
+      toast.error("Delete Failed", err.message);
+    } finally {
+      setIsDeletingPO(false);
     }
   };
 
@@ -456,6 +468,18 @@ export default function PurchaseOrdersPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingPO(po);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded-md transition-all"
+                        title="Delete Purchase Order"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+
                       <span className="text-[#828fff] text-xs font-medium group-hover:underline flex items-center gap-1">
                         <span>Inspect</span>
                         <ArrowRight className="h-3.5 w-3.5" />
@@ -517,6 +541,15 @@ export default function PurchaseOrdersPage() {
                       </button>
                     ))}
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setDeletingPO(selectedPO)}
+                    className="p-1.5 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded-lg transition-colors"
+                    title="Delete Purchase Order"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
 
                   <button
                     type="button"
@@ -898,6 +931,16 @@ export default function PurchaseOrdersPage() {
             </Card>
           </div>
         )}
+
+        <ConfirmModal
+          isOpen={!!deletingPO}
+          title="Delete Purchase Order"
+          description={`Are you sure you want to permanently delete purchase order "${deletingPO?.poNumber}"? All line items and associated allocations will be removed.`}
+          confirmLabel="Delete Purchase Order"
+          isLoading={isDeletingPO}
+          onConfirm={handleConfirmDeletePO}
+          onCancel={() => setDeletingPO(null)}
+        />
       </main>
     </div>
   );

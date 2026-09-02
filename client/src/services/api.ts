@@ -591,3 +591,14 @@ export const receivePurchaseOrder = async (
   }
   return json.data;
 };
+
+export const deletePurchaseOrder = async (id: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}/purchase-orders/${id}`, {
+    method: "DELETE",
+  });
+  const json: ApiResponse = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to delete purchase order");
+  }
+};
+
