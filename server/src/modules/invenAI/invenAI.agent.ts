@@ -7,7 +7,7 @@ export const createInvenAIAgent = () => {
   const tools = createInvenAITools();
 
   return new ToolLoopAgent({
-    model: mistral("mistral-medium-latest"),
+    model: mistral("codestral-latest"),
     instructions: INVEN_AI_INSTRUCTIONS,
     tools,
     toolApproval: {
