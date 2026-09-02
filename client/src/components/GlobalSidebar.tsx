@@ -13,6 +13,7 @@ import {
   FolderGit2,
   Microchip,
   Layers,
+  Sparkles,
   Menu,
   X,
   PanelLeftClose,
@@ -88,6 +89,13 @@ export const GlobalSidebar: React.FC = () => {
       href: "/insights",
       icon: TrendingUp,
       active: pathname.startsWith("/insights"),
+    },
+    {
+      label: "InvenAI",
+      href: "/inven-ai",
+      icon: Sparkles,
+      active: pathname.startsWith("/inven-ai"),
+      badge: "AI",
     },
   ];
 

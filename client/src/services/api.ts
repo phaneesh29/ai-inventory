@@ -1020,5 +1020,60 @@ export const deleteBOM = async (id: string): Promise<void> => {
   }
 };
 
+export interface InvenAIChatMessage {
+  id?: string;
+  role: "user" | "assistant" | "system" | "tool";
+  content: string;
+}
+
+export interface InvenAIToolCall {
+  type: string;
+  toolCallId: string;
+  toolName: string;
+  input: Record<string, any>;
+}
+
+export interface InvenAIToolResult {
+  type: string;
+  toolCallId: string;
+  toolName: string;
+  input: Record<string, any>;
+  output: any;
+}
+
+export interface InvenAIStep {
+  text: string;
+  toolCalls: InvenAIToolCall[];
+  toolResults: InvenAIToolResult[];
+  finishReason: string;
+}
+
+export interface InvenAIChatResult {
+  text: string;
+  toolApprovalRequests: any[];
+  steps: InvenAIStep[];
+  usage?: {
+    totalTokens: number;
+    inputTokens: number;
+    outputTokens: number;
+  };
+}
+
+export const sendInvenAIChat = async (
+  messages: Array<{ role: string; content: string }>
+): Promise<InvenAIChatResult> => {
+  const res = await fetch(`${API_BASE_URL}/inven-ai/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages }),
+  });
+  const json: ApiResponse<InvenAIChatResult> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to generate InvenAI response");
+  }
+  return json.data;
+};
+
+
 
 
