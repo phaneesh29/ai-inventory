@@ -11,6 +11,7 @@ import {
   FileSpreadsheet,
   TrendingUp,
   FolderGit2,
+  Microchip,
   Menu,
   X,
 } from "lucide-react";
@@ -26,6 +27,13 @@ export const GlobalSidebar: React.FC = () => {
       icon: FolderGit2,
       active: pathname === "/" || pathname.startsWith("/workspace"),
       badge: "Projects",
+    },
+    {
+      label: "Component Catalog",
+      href: "/items",
+      icon: Microchip,
+      active: pathname.startsWith("/items"),
+      badge: "Master",
     },
     {
       label: "Warehouse Stock",

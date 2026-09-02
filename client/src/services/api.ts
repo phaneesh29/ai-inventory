@@ -24,6 +24,18 @@ export interface Workspace {
   updatedAt: string;
 }
 
+export interface Item {
+  id: string;
+  partNumber: string;
+  name: string;
+  description?: string | null;
+  category: string;
+  unit: string;
+  specifications: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SystemHealthData {
   status: "ok" | "degraded" | "error";
   latencyMs: number;
@@ -103,5 +115,95 @@ export const deleteWorkspace = async (id: string): Promise<void> => {
   const json: ApiResponse = await res.json();
   if (!json.success) {
     throw new Error(json.error?.message || "Failed to delete workspace");
+  }
+};
+
+export const fetchItems = async (params?: {
+  search?: string;
+  category?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ items: Item[]; total: number; hasMore: boolean }> => {
+  const query = new URLSearchParams();
+  if (params?.search) query.append("search", params.search);
+  if (params?.category) query.append("category", params.category);
+  if (params?.limit) query.append("limit", params.limit.toString());
+  if (params?.offset) query.append("offset", params.offset.toString());
+
+  const res = await fetch(`${API_BASE_URL}/items?${query.toString()}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<Item[]> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to fetch items");
+  }
+  return {
+    items: Array.isArray(json.data) ? json.data : [],
+    total: json.pagination?.total || 0,
+    hasMore: json.pagination?.hasMore || false,
+  };
+};
+
+export const fetchItemById = async (id: string): Promise<Item> => {
+  const res = await fetch(`${API_BASE_URL}/items/${id}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<Item> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || `Failed to fetch item '${id}'`);
+  }
+  return json.data;
+};
+
+export const createItem = async (payload: {
+  partNumber: string;
+  name: string;
+  category: string;
+  unit?: string;
+  description?: string;
+  specifications?: Record<string, any>;
+}): Promise<Item> => {
+  const res = await fetch(`${API_BASE_URL}/items`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<Item> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to create item");
+  }
+  return json.data;
+};
+
+export const updateItem = async (
+  id: string,
+  payload: Partial<{
+    partNumber: string;
+    name: string;
+    category: string;
+    unit: string;
+    description: string;
+    specifications: Record<string, any>;
+  }>
+): Promise<Item> => {
+  const res = await fetch(`${API_BASE_URL}/items/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<Item> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to update item");
+  }
+  return json.data;
+};
+
+export const deleteItem = async (id: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}/items/${id}`, {
+    method: "DELETE",
+  });
+  const json: ApiResponse = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to delete item");
   }
 };
