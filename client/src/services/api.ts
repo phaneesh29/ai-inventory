@@ -78,6 +78,59 @@ export interface SupplierItem {
   updatedAt: string;
 }
 
+export interface EnrichedPurchaseOrderItem {
+  id: string;
+  itemId: string;
+  partNumber: string;
+  name: string;
+  category: string;
+  supplierPartNumber: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  supplierId: string;
+  supplierName: string;
+  supplierCode: string;
+  supplierReliabilityScore: number;
+  status: string;
+  totalAmount: number;
+  currency: string;
+  notes: string | null;
+  items: EnrichedPurchaseOrderItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReceivePurchaseOrderResult {
+  purchaseOrder: PurchaseOrder;
+  deliveryTimeliness: {
+    status: "EARLY" | "ON_TIME" | "LATE";
+    daysDifference: number;
+    expectedArrivalDate: string;
+    actualArrivalDate: string;
+  };
+  supplierScoreAdjustment: {
+    supplierName: string;
+    supplierCode: string;
+    previousScore: number;
+    newScore: number;
+    scoreDelta: number;
+    reason: string;
+  };
+  inventoryStockUpdates: {
+    itemId: string;
+    partNumber: string;
+    quantityAdded: number;
+    newQuantityOnHand: number;
+    location: string;
+  }[];
+}
+
 export interface SystemHealthData {
   status: "ok" | "degraded" | "error";
   latencyMs: number;
@@ -440,3 +493,101 @@ export const fetchSuppliersByItem = async (itemId: string): Promise<SupplierItem
   return Array.isArray(json.data) ? json.data : [];
 };
 
+export const fetchPurchaseOrders = async (params?: {
+  status?: string;
+  supplierId?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ purchaseOrders: PurchaseOrder[]; total: number }> => {
+  const query = new URLSearchParams();
+  if (params?.status) query.append("status", params.status);
+  if (params?.supplierId) query.append("supplierId", params.supplierId);
+  if (params?.limit) query.append("limit", params.limit.toString());
+  if (params?.offset) query.append("offset", params.offset.toString());
+
+  const res = await fetch(`${API_BASE_URL}/purchase-orders?${query.toString()}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<PurchaseOrder[]> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to fetch purchase orders");
+  }
+  return {
+    purchaseOrders: Array.isArray(json.data) ? json.data : [],
+    total: json.pagination?.total || (Array.isArray(json.data) ? json.data.length : 0),
+  };
+};
+
+export const fetchPurchaseOrderById = async (id: string): Promise<PurchaseOrder> => {
+  const res = await fetch(`${API_BASE_URL}/purchase-orders/${id}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<PurchaseOrder> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || `Failed to fetch purchase order '${id}'`);
+  }
+  return json.data;
+};
+
+export const createPurchaseOrder = async (payload: {
+  supplierId: string;
+  currency?: string;
+  notes?: string;
+  status?: string;
+  items: Array<{
+    itemId: string;
+    supplierPartNumber: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
+}): Promise<PurchaseOrder> => {
+  const res = await fetch(`${API_BASE_URL}/purchase-orders`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<PurchaseOrder> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to create purchase order");
+  }
+  return json.data;
+};
+
+export const updatePurchaseOrderStatus = async (
+  id: string,
+  payload: {
+    status: string;
+    notes?: string;
+  }
+): Promise<PurchaseOrder> => {
+  const res = await fetch(`${API_BASE_URL}/purchase-orders/${id}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<PurchaseOrder> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to update purchase order status");
+  }
+  return json.data;
+};
+
+export const receivePurchaseOrder = async (
+  id: string,
+  payload?: {
+    deliveryDate?: string;
+    location?: string;
+    notes?: string;
+  }
+): Promise<ReceivePurchaseOrderResult> => {
+  const res = await fetch(`${API_BASE_URL}/purchase-orders/${id}/receive`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+  const json: ApiResponse<ReceivePurchaseOrderResult> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to receive purchase order");
+  }
+  return json.data;
+};
