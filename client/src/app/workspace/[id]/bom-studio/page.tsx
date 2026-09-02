@@ -20,13 +20,13 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import {
   Layers,
   UploadCloud,
   FileCheck,
   CheckCircle2,
   Sparkles,
-  ArrowRight,
   ArrowLeft,
   Download,
   Trash2,
@@ -35,19 +35,47 @@ import {
   Cpu,
   Boxes,
   Truck,
-  FileSpreadsheet,
   X,
   Play,
   Check,
+  ChevronDown,
+  ChevronUp,
+  ShieldCheck,
+  AlertTriangle,
+  FileText,
+  Copy,
+  ExternalLink,
+  Zap,
+  CheckSquare,
+  Square,
+  ArrowRight,
 } from "lucide-react";
 
 interface AgentStep {
+  id: string;
+  number: string;
   name: string;
   role: string;
   status: "pending" | "running" | "completed" | "error";
   model: string;
-  details?: string;
+  description: string;
 }
+
+const SAMPLE_FLIGHT_CONTROLLER_CSV = `Part Number,Description,Designator,Quantity,Footprint,Category
+ESP32-WROOM-32E-N4,Espressif Dual-Core Wi-Fi & BLE MCU Module,U1,1,SMD Module 38-Pin,Microcontroller
+STM32F103C8T6,STMicroelectronics ARM Cortex-M3 72MHz MCU,U2,1,LQFP-48,Microcontroller
+RC0805FR-0710KL,Yageo 10k Ohm 1% 1/8W SMD Resistor 0805,R1 R2 R3 R4,4,0805,Resistor
+CRCW080510K0FKEA,Vishay Dale 10k Ohm 1% 1/8W SMD Resistor 0805,R5 R6,2,0805,Resistor
+SSD1306-0.96-OLED-I2C,Solomon Systech 0.96 inch 128x64 I2C OLED Display Module,DISP1,1,4-Pin Breakout,Other
+TPS54331DR,Texas Instruments 3A 28V Step Down DC-DC Converter,U3,1,SOIC-8,Power Management
+CL21A106KOQNNNE,Samsung 10uF 16V X5R 0805 Ceramic Capacitor,C1 C2 C3,3,0805,Capacitor`;
+
+const SAMPLE_IOT_SENSOR_TXT = `Part Number	Description	Designator	Quantity	Footprint	Category
+ESP32-S3-WROOM-1-N8R8	Espressif ESP32-S3 AI Vector MCU 8MB Flash 8MB PSRAM	U1	1	SMD Module 41-Pin	Microcontroller
+SSD1306-0.96-OLED-I2C	Solomon Systech 0.96 inch 128x64 I2C OLED Display Module	DISP1	1	4-Pin Header	Other
+RC0805FR-0710KL	Yageo 10k Ohm 1% 1/8W SMD Resistor 0805	R1 R2	2	0805	Resistor
+CRCW080510K0FKEA	Vishay Dale 10k Ohm 1% 1/8W SMD Resistor 0805	R3 R4 R5	3	0805	Resistor
+BME280	Bosch Digital Humidity Pressure and Temperature Sensor	U2	1	LGA-8	Sensor`;
 
 export default function BOMStudioPage() {
   const params = useParams();
@@ -69,6 +97,20 @@ export default function BOMStudioPage() {
   const [isApproving, setIsApproving] = useState(false);
   const [approvalResult, setApprovalResult] = useState<any | null>(null);
 
+  const [confirmReserveStock, setConfirmReserveStock] = useState(true);
+  const [confirmDraftPOs, setConfirmDraftPOs] = useState(true);
+
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+
+  const [expandedAgents, setExpandedAgents] = useState<Record<string, boolean>>({
+    "01": true,
+    "02": true,
+    "03": true,
+    "04": true,
+    "05": true,
+    "06": true,
+  });
+
   const [activeBOMDetail, setActiveBOMDetail] = useState<EnrichedBOMDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
@@ -79,48 +121,112 @@ export default function BOMStudioPage() {
 
   const [agentPipeline, setAgentPipeline] = useState<AgentStep[]>([
     {
+      id: "01",
+      number: "01",
       name: "Document Ingestion Agent",
-      role: "Parser & Normalizer",
+      role: "Parser, Normalizer & Schema Validator",
       status: "pending",
       model: "codestral-latest",
-      details: "Extracts tabular MPNs, designators, and quantities",
+      description: "Extracts tabular MPNs, designators, footprints, and technical specs into unified database records.",
     },
     {
+      id: "02",
+      number: "02",
       name: "Inventory Audit Agent",
-      role: "Stock Gap Detector",
+      role: "Stock Gap & Deficit Auditor",
       status: "pending",
-      model: "mistral-small-latest",
-      details: "Matches master catalog and identifies stock deficits",
+      model: "codestral-latest",
+      description: "Performs real-time warehouse inventory cross-referencing and calculates buildable batch ratios.",
     },
     {
+      id: "03",
+      number: "03",
       name: "Alternative Sourcing Agent",
-      role: "Parametric Substitute Finder",
+      role: "Parametric Replacement & Circuit Synthesizer",
       status: "pending",
-      model: "mistral-large-latest",
-      details: "Discovers pin-compatible replacements for shortages",
+      model: "codestral-latest",
+      description: "Discovers in-stock drop-in replacements, parametric upgrades, and series/parallel resistor combinations.",
     },
     {
+      id: "04",
+      number: "04",
       name: "Distributor Matrix Agent",
-      role: "Price & MOQ Optimizer",
+      role: "Multi-Vendor Price & MOQ Optimizer",
       status: "pending",
-      model: "mistral-medium-latest",
-      details: "Benchmarks quotes across DigiKey, Mouser, and LCSC",
+      model: "codestral-latest",
+      description: "Benchmarks real-time distributor catalog pricing and lead times across DigiKey, Mouser, and LCSC.",
     },
     {
+      id: "05",
+      number: "05",
       name: "Plan Formulation Agent",
       role: "Procurement Architect",
       status: "pending",
       model: "codestral-latest",
-      details: "Calculates lot sizes, order splits, and total cost",
+      description: "Formulates optimal PO lot sizes, order splits, total cost calculations, and allocation schedules.",
     },
     {
-      name: "Human-In-The-Loop Agent",
-      role: "Execution Guardrail",
+      id: "06",
+      number: "06",
+      name: "Human-In-The-Loop (HITL) Guardrail",
+      role: "Deterministic Execution Authority",
       status: "pending",
-      model: "Deterministic Engine",
-      details: "Awaits user confirmation to lock inventory & draft POs",
+      model: "HITL Engine",
+      description: "Awaits direct human approval to commit warehouse stock reservations and emit live supplier Purchase Orders.",
     },
   ]);
+
+  const toggleAgentExpand = (id: string) => {
+    setExpandedAgents((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const expandAllAgents = () => {
+    setExpandedAgents({
+      "01": true,
+      "02": true,
+      "03": true,
+      "04": true,
+      "05": true,
+      "06": true,
+    });
+  };
+
+  const collapseAllAgents = () => {
+    setExpandedAgents({
+      "01": false,
+      "02": false,
+      "03": false,
+      "04": false,
+      "05": false,
+      "06": false,
+    });
+  };
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(text);
+    toast.success("Copied to Clipboard", text);
+    setTimeout(() => setCopiedText(null), 2000);
+  };
+
+  const loadSampleFile = (type: "csv" | "txt") => {
+    if (type === "csv") {
+      const blob = new Blob([SAMPLE_FLIGHT_CONTROLLER_CSV], { type: "text/csv" });
+      const file = new File([blob], "flight_controller_mainboard.csv", { type: "text/csv" });
+      setSelectedFile(file);
+      setBomName("Flight Controller Mainboard Rev 2");
+      toast.success("Sample Loaded", "Flight Controller CSV loaded with 7 components.");
+    } else {
+      const blob = new Blob([SAMPLE_IOT_SENSOR_TXT], { type: "text/plain" });
+      const file = new File([blob], "iot_sensor_module.txt", { type: "text/plain" });
+      setSelectedFile(file);
+      setBomName("IoT Environmental Sensor Rev 1");
+      toast.success("Sample Loaded", "IoT Sensor TXT loaded with 5 components.");
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -193,7 +299,7 @@ export default function BOMStudioPage() {
         }
         return prev;
       });
-    }, 600);
+    }, 700);
 
     try {
       const formData = new FormData();
@@ -210,11 +316,16 @@ export default function BOMStudioPage() {
       clearInterval(timer);
 
       setAgentPipeline((prev) =>
-        prev.map((s) => ({ ...s, status: "completed" }))
+        prev.map((s, i) => ({
+          ...s,
+          status: i === 5 ? (approvalResult ? "completed" : "running") : "completed",
+        }))
       );
 
       setWorkflowResult(result);
-      toast.success("BOM Audited Successfully", "6-agent analysis complete. Review execution plan below.");
+      expandAllAgents();
+
+      toast.success("BOM Audited Successfully", "6-agent pipeline complete. Review outputs and HITL approval below.");
       await loadData();
     } catch (err: any) {
       clearInterval(timer);
@@ -228,18 +339,30 @@ export default function BOMStudioPage() {
   };
 
   const handleApprovePlan = async () => {
-    if (!workflowResult || !workflowResult.plan) return;
+    if (!workflowResult) return;
+
+    const bomId = workflowResult.bom?.id || workflowResult.bomId;
+    const plan = workflowResult.processPlan || workflowResult.plan;
+
+    if (!bomId || !plan) {
+      toast.error("Execution Error", "No active plan found to approve.");
+      return;
+    }
 
     try {
       setIsApproving(true);
-      const res = await approveBOMPlan(workflowResult.bomId, {
-        bomId: workflowResult.bomId,
+      const res = await approveBOMPlan(bomId, {
+        bomId,
         workspaceId,
-        plan: workflowResult.plan,
+        plan,
       });
 
       setApprovalResult(res);
-      toast.success("Plan Executed", "Warehouse stock allocated and Purchase Orders drafted.");
+      setAgentPipeline((prev) =>
+        prev.map((s) => ({ ...s, status: "completed" }))
+      );
+
+      toast.success("HITL Plan Executed", "Warehouse stock locked and supplier Purchase Orders generated.");
       await loadData();
     } catch (err: any) {
       toast.error("Execution Failed", err.message);
@@ -312,7 +435,34 @@ export default function BOMStudioPage() {
     document.body.removeChild(link);
   };
 
-  const totalComponentsCount = boms.reduce((acc, b) => acc + (b.totalItems || 0), 0);
+  const renderLollipopNodeIcon = (agent: AgentStep) => {
+    if (agent.status === "completed") {
+      return (
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#14532d] border-2 border-[#4ade80] text-[#4ade80] shadow-[0_0_12px_rgba(74,222,128,0.35)] transition-all">
+          <CheckCircle2 className="h-5 w-5" />
+        </div>
+      );
+    }
+    if (agent.status === "running") {
+      return (
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#14172e] border-2 border-[#5e6ad2] text-[#828fff] shadow-[0_0_15px_rgba(94,106,210,0.5)] animate-pulse transition-all">
+          <RefreshCw className="h-4 w-4 animate-spin" />
+        </div>
+      );
+    }
+    if (agent.status === "error") {
+      return (
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#241414] border-2 border-[#f87171] text-[#f87171] shadow-[0_0_12px_rgba(248,113,113,0.35)] transition-all">
+          <AlertTriangle className="h-4 w-4" />
+        </div>
+      );
+    }
+    return (
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#141516] border-2 border-[#23252a] text-[#8a8f98] transition-all">
+        <span className="font-mono text-xs font-bold">{agent.number}</span>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#010102] text-[#f7f8f8]">
@@ -390,7 +540,7 @@ export default function BOMStudioPage() {
               <Sparkles className="h-4 w-4 text-[#4ade80]" />
             </div>
             <p className="text-sm font-bold font-mono text-[#4ade80] mt-2">
-              {isProcessing ? "Executing Agents..." : "Ready for Ingestion"}
+              {isProcessing ? "Executing Agents..." : workflowResult ? "Audit Ready for HITL" : "Ready for Ingestion"}
             </p>
           </Card>
         </div>
@@ -405,7 +555,7 @@ export default function BOMStudioPage() {
                   : "bg-[#010102] border border-[#23252a] text-[#8a8f98] hover:text-[#f7f8f8]"
               }`}
             >
-              AI Ingestion Studio
+              AI Ingestion Studio & Pipeline
             </button>
             <button
               onClick={() => setActiveTab("registry")}
@@ -421,18 +571,46 @@ export default function BOMStudioPage() {
         </div>
 
         {activeTab === "studio" && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <Card className="border-[#23252a] bg-[#0f1011]">
               <CardHeader>
-                <CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-[#828fff]" />
-                    <span>Upload & Audit Electronic Bill of Materials</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-[#828fff]" />
+                        <span>Upload & Trigger 6-Agent Hardware Audit</span>
+                      </div>
+                    </CardTitle>
+                    <CardDescription>
+                      Upload your CAD/EDA BOM file. The 6-agent system standardizes MPNs, audits inventory gaps, benchmarks distributor quotes, and awaits your Human-In-The-Loop approval.
+                    </CardDescription>
                   </div>
-                </CardTitle>
-                <CardDescription>
-                  Upload your CAD/EDA BOM file. Our 6-agent system parses line items, checks live warehouse stock, and calculates procurement purchase orders.
-                </CardDescription>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-[#8a8f98] font-medium hidden sm:inline">1-Click Test:</span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => loadSampleFile("csv")}
+                      className="text-[11px]"
+                    >
+                      <Zap className="h-3 w-3 text-[#facc15]" />
+                      <span>Drone BOM (.csv)</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => loadSampleFile("txt")}
+                      className="text-[11px]"
+                    >
+                      <Zap className="h-3 w-3 text-[#4ade80]" />
+                      <span>IoT Sensor (.txt)</span>
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
 
               <CardContent>
@@ -495,10 +673,10 @@ export default function BOMStudioPage() {
                       >
                         <UploadCloud className="h-8 w-8 text-[#8a8f98] mx-auto mb-2" />
                         <p className="text-xs font-semibold text-[#f7f8f8]">
-                          Click to browse or drop Bill of Materials file
+                          Click to browse or drop Bill of Materials file (.csv, .txt, .xlsx)
                         </p>
                         <p className="text-[10px] text-[#8a8f98] mt-1">
-                          Supports standard export schemas from Altium Designer, KiCad, Eagle, OrCAD, and plain text (.txt)
+                          Supports standard export schemas from Altium Designer, KiCad, Eagle, OrCAD, and plain text tab/comma delimited formats
                         </p>
                       </div>
                     ) : (
@@ -538,177 +716,586 @@ export default function BOMStudioPage() {
                       isLoading={isProcessing}
                     >
                       <Play className="h-3.5 w-3.5" />
-                      <span>Execute 6-Agent AI Audit</span>
+                      <span>Execute 6-Agent Audit</span>
                     </Button>
                   </div>
                 </form>
               </CardContent>
             </Card>
 
-            {(isProcessing || workflowResult) && (
-              <Card className="border-[#23252a] bg-[#0f1011]">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Cpu className="h-4 w-4 text-[#5e6ad2]" />
-                        <span>Autonomous 6-Agent Execution Pipeline</span>
-                      </div>
-                    </CardTitle>
-                    <Badge variant={workflowResult ? "success" : "primary"}>
-                      {workflowResult ? "Pipeline Completed" : "Pipeline Active"}
-                    </Badge>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-[#23252a] pb-3">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-4 w-4 text-[#5e6ad2]" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-[#f7f8f8]">
+                    Autonomous Agent Execution Tree
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={expandAllAgents}
+                    className="text-[10px] text-[#8a8f98] hover:text-white px-2 py-1 rounded hover:bg-[#141516] transition-colors cursor-pointer"
+                  >
+                    Expand All
+                  </button>
+                  <span className="text-[#3e3e44] text-[10px]">•</span>
+                  <button
+                    onClick={collapseAllAgents}
+                    className="text-[10px] text-[#8a8f98] hover:text-white px-2 py-1 rounded hover:bg-[#141516] transition-colors cursor-pointer"
+                  >
+                    Collapse All
+                  </button>
+
+                  <Badge variant={workflowResult ? "success" : "primary"}>
+                    {workflowResult ? "Pipeline Completed • HITL Active" : isProcessing ? "Executing Pipeline..." : "Pipeline Standing By"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="relative pl-6 sm:pl-8 space-y-8 before:absolute before:left-[17px] sm:before:left-[21px] before:top-4 before:bottom-4 before:w-[2px] before:bg-gradient-to-b before:from-[#5e6ad2] before:via-[#828fff] before:to-[#4ade80]">
+                
+                <div className="relative group">
+                  <div className="absolute -left-[35px] sm:-left-[41px] top-1">
+                    {renderLollipopNodeIcon(agentPipeline[0])}
                   </div>
-                </CardHeader>
 
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {agentPipeline.map((agent, i) => (
-                      <div
-                        key={i}
-                        className={`rounded-xl border p-3.5 space-y-2 transition-all ${
-                          agent.status === "running"
-                            ? "border-[#5e6ad2] bg-[#14172e]/60 ring-1 ring-[#5e6ad2]"
-                            : agent.status === "completed"
-                            ? "border-[#23252a] bg-[#010102]"
-                            : "border-[#23252a]/40 bg-[#090a0f] opacity-60"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono text-[#8a8f98]">
-                            Agent 0{i + 1}
-                          </span>
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#141516] border border-[#23252a] text-[#828fff]">
-                            {agent.model}
-                          </span>
-                        </div>
-
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            {agent.status === "completed" ? (
-                              <CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80] shrink-0" />
-                            ) : agent.status === "running" ? (
-                              <RefreshCw className="h-3.5 w-3.5 text-[#5e6ad2] animate-spin shrink-0" />
-                            ) : (
-                              <div className="h-3.5 w-3.5 rounded-full border border-[#3e3e44] shrink-0" />
-                            )}
-                            <h4 className="text-xs font-semibold text-[#f7f8f8] truncate">
-                              {agent.name}
-                            </h4>
-                          </div>
-                          <p className="text-[10px] text-[#8a8f98] mt-0.5">{agent.details}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {workflowResult && (
-              <Card className="border-[#5e6ad2]/60 bg-[#0f1011]">
-                <CardHeader>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="success">Audit Complete</Badge>
-                        <span className="text-xs text-[#8a8f98]">
-                          Target: {batchQuantity} units
+                  <div className="rounded-xl border border-[#23252a] bg-[#0f1011] overflow-hidden shadow-lg">
+                    <div
+                      onClick={() => toggleAgentExpand("01")}
+                      className="flex items-center justify-between p-4 bg-[#141516]/80 cursor-pointer hover:bg-[#141516] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#010102] border border-[#23252a] text-[#828fff]">
+                          Agent 01
                         </span>
+                        <div>
+                          <h4 className="text-xs font-bold text-[#f7f8f8]">
+                            Document Ingestion Agent
+                          </h4>
+                          <span className="text-[10px] text-[#8a8f98]">
+                            {agentPipeline[0].role} • Model: <span className="font-mono text-[#828fff]">{agentPipeline[0].model}</span>
+                          </span>
+                        </div>
                       </div>
-                      <CardTitle className="mt-1">Formulated Procurement & Allocation Plan</CardTitle>
+
+                      <div className="flex items-center gap-2">
+                        <Badge variant={agentPipeline[0].status === "completed" ? "success" : "neutral"}>
+                          {agentPipeline[0].status.toUpperCase()}
+                        </Badge>
+                        {expandedAgents["01"] ? (
+                          <ChevronUp className="h-4 w-4 text-[#8a8f98]" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-[#8a8f98]" />
+                        )}
+                      </div>
                     </div>
 
-                    {!approvalResult && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleApprovePlan}
-                        isLoading={isApproving}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        <span>Approve & Execute Plan</span>
-                      </Button>
+                    {expandedAgents["01"] && (
+                      <div className="p-4 border-t border-[#23252a] space-y-4 bg-[#090a0f]">
+                        <MarkdownRenderer
+                          content={workflowResult?.bomAgentSummary || agentPipeline[0].description}
+                        />
+
+                        {workflowResult?.bom?.items && (
+                          <div className="overflow-x-auto rounded-lg border border-[#23252a]">
+                            <table className="w-full text-left text-[11px]">
+                              <thead className="bg-[#141516] text-[#8a8f98] border-b border-[#23252a]">
+                                <tr>
+                                  <th className="p-2">Part Number</th>
+                                  <th className="p-2">Name / Description</th>
+                                  <th className="p-2">Category</th>
+                                  <th className="p-2">Designator</th>
+                                  <th className="p-2 text-right">Required Qty</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#23252a]/60 text-[#d0d6e0]">
+                                {workflowResult.bom.items.map((it: any, idx: number) => (
+                                  <tr key={idx} className="hover:bg-[#141516]/40">
+                                    <td className="p-2 font-mono font-bold text-[#828fff]">
+                                      <div className="flex items-center gap-1.5">
+                                        <span>{it.partNumber}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopy(it.partNumber)}
+                                          className="text-[#8a8f98] hover:text-white p-0.5"
+                                          title="Copy MPN"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                    <td className="p-2 truncate max-w-xs">{it.name}</td>
+                                    <td className="p-2">
+                                      <span className="rounded bg-[#141516] px-1.5 py-0.5 text-[9px] border border-[#23252a]">
+                                        {it.category}
+                                      </span>
+                                    </td>
+                                    <td className="p-2 font-mono text-[10px]">
+                                      {it.referenceDesignator || "-"}
+                                    </td>
+                                    <td className="p-2 text-right font-mono font-bold text-[#f7f8f8]">
+                                      {it.quantity} {it.unit || "pcs"}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
-                </CardHeader>
+                </div>
 
-                <CardContent className="space-y-4">
-                  {approvalResult && (
-                    <div className="rounded-xl border border-[#14532d] bg-[#0d2e16]/80 p-4 text-xs space-y-2">
-                      <div className="flex items-center gap-2 text-[#4ade80] font-bold">
-                        <CheckCircle2 className="h-4 w-4" />
-                        <span>Plan Executed & Locked in Database</span>
-                      </div>
-                      <p className="text-[#d0d6e0] leading-relaxed">
-                        Warehouse inventory has been reserved, and Purchase Orders have been generated for all missing stock.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="p-3 rounded-xl bg-[#010102] border border-[#23252a]">
-                      <span className="text-[10px] text-[#8a8f98] block">Total BOM Items</span>
-                      <span className="text-base font-bold text-[#f7f8f8]">
-                        {workflowResult.totalItems || workflowResult.plan?.summary?.totalLineItems || 0} Line Items
-                      </span>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-[#010102] border border-[#23252a]">
-                      <span className="text-[10px] text-[#8a8f98] block">Warehouse Stock Covered</span>
-                      <span className="text-base font-bold text-[#4ade80]">
-                        {workflowResult.plan?.stockAllocations?.length || 0} Allocated
-                      </span>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-[#010102] border border-[#23252a]">
-                      <span className="text-[10px] text-[#8a8f98] block">Purchase Orders Required</span>
-                      <span className="text-base font-bold text-[#facc15]">
-                        {workflowResult.plan?.purchaseOrders?.length || 0} POs Drafted
-                      </span>
-                    </div>
+                <div className="relative group">
+                  <div className="absolute -left-[35px] sm:-left-[41px] top-1">
+                    {renderLollipopNodeIcon(agentPipeline[1])}
                   </div>
 
-                  {workflowResult.plan?.purchaseOrders && workflowResult.plan.purchaseOrders.length > 0 && (
-                    <div className="space-y-2 pt-2">
-                      <h4 className="text-xs font-bold text-[#f7f8f8] flex items-center gap-1.5">
-                        <Truck className="h-3.5 w-3.5 text-[#5e6ad2]" />
-                        <span>Proposed Purchase Orders</span>
-                      </h4>
+                  <div className="rounded-xl border border-[#23252a] bg-[#0f1011] overflow-hidden shadow-lg">
+                    <div
+                      onClick={() => toggleAgentExpand("02")}
+                      className="flex items-center justify-between p-4 bg-[#141516]/80 cursor-pointer hover:bg-[#141516] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#010102] border border-[#23252a] text-[#828fff]">
+                          Agent 02
+                        </span>
+                        <div>
+                          <h4 className="text-xs font-bold text-[#f7f8f8]">
+                            Inventory Audit Agent
+                          </h4>
+                          <span className="text-[10px] text-[#8a8f98]">
+                            {agentPipeline[1].role} • Model: <span className="font-mono text-[#828fff]">{agentPipeline[1].model}</span>
+                          </span>
+                        </div>
+                      </div>
 
-                      <div className="overflow-x-auto rounded-xl border border-[#23252a]">
-                        <table className="w-full text-left text-xs">
-                          <thead className="bg-[#141516] text-[#8a8f98] border-b border-[#23252a]">
-                            <tr>
-                              <th className="p-2.5 font-semibold">Supplier</th>
-                              <th className="p-2.5 font-semibold">Part Number</th>
-                              <th className="p-2.5 font-semibold">Quantity</th>
-                              <th className="p-2.5 font-semibold">Unit Price</th>
-                              <th className="p-2.5 font-semibold">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#23252a] text-[#d0d6e0]">
-                            {workflowResult.plan.purchaseOrders.map((po: any, pIdx: number) => (
-                              <tr key={pIdx} className="hover:bg-[#141516]/50">
-                                <td className="p-2.5 font-bold text-[#828fff]">
-                                  {po.supplierCode || po.supplierName}
-                                </td>
-                                <td className="p-2.5 font-mono">{po.partNumber}</td>
-                                <td className="p-2.5">{po.orderQuantity} pcs</td>
-                                <td className="p-2.5">${po.unitPrice?.toFixed(3)}</td>
-                                <td className="p-2.5 font-semibold text-[#f7f8f8]">
-                                  ${(po.orderQuantity * po.unitPrice).toFixed(2)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={agentPipeline[1].status === "completed" ? "success" : "neutral"}>
+                          {agentPipeline[1].status.toUpperCase()}
+                        </Badge>
+                        {expandedAgents["02"] ? (
+                          <ChevronUp className="h-4 w-4 text-[#8a8f98]" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-[#8a8f98]" />
+                        )}
                       </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+
+                    {expandedAgents["02"] && (
+                      <div className="p-4 border-t border-[#23252a] space-y-4 bg-[#090a0f]">
+                        <MarkdownRenderer
+                          content={workflowResult?.audit?.agentSummary || agentPipeline[1].description}
+                        />
+
+                        {workflowResult?.audit && (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="p-3 rounded-lg bg-[#010102] border border-[#23252a]">
+                              <span className="text-[10px] text-[#8a8f98] block">Readiness Score</span>
+                              <span className="text-lg font-bold text-[#4ade80]">
+                                {workflowResult.audit.readinessScore}%
+                              </span>
+                            </div>
+
+                            <div className="p-3 rounded-lg bg-[#010102] border border-[#23252a]">
+                              <span className="text-[10px] text-[#8a8f98] block">In-Stock Coverage</span>
+                              <span className="text-lg font-bold text-[#f7f8f8]">
+                                {workflowResult.audit.inStockLineItems} / {workflowResult.audit.totalLineItems} Lines
+                              </span>
+                            </div>
+
+                            <div className="p-3 rounded-lg bg-[#010102] border border-[#23252a]">
+                              <span className="text-[10px] text-[#8a8f98] block">Shortage Deficits</span>
+                              <span className="text-lg font-bold text-[#f87171]">
+                                {workflowResult.audit.deficitLineItems} Deficits
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {workflowResult?.audit?.deficitItems && workflowResult.audit.deficitItems.length > 0 && (
+                          <div className="space-y-2">
+                            <span className="text-[11px] font-bold text-[#f87171]">
+                              Identified Component Shortages:
+                            </span>
+                            <div className="overflow-x-auto rounded-lg border border-[#3e1b1b] bg-[#1a0a0a]">
+                              <table className="w-full text-left text-[11px]">
+                                <thead className="bg-[#2a1010] text-[#fca5a5] border-b border-[#3e1b1b]">
+                                  <tr>
+                                    <th className="p-2">Part Number</th>
+                                    <th className="p-2">Category</th>
+                                    <th className="p-2 text-right">Required</th>
+                                    <th className="p-2 text-right">Warehouse Available</th>
+                                    <th className="p-2 text-right">Deficit</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#3e1b1b] text-[#fca5a5]">
+                                  {workflowResult.audit.deficitItems.map((d: any, dIdx: number) => (
+                                    <tr key={dIdx}>
+                                      <td className="p-2 font-mono font-bold">{d.partNumber}</td>
+                                      <td className="p-2">{d.category}</td>
+                                      <td className="p-2 text-right">{d.requiredQuantity}</td>
+                                      <td className="p-2 text-right">{d.availableQuantity}</td>
+                                      <td className="p-2 text-right font-bold text-[#f87171]">
+                                        -{d.deficitQuantity}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative group">
+                  <div className="absolute -left-[35px] sm:-left-[41px] top-1">
+                    {renderLollipopNodeIcon(agentPipeline[2])}
+                  </div>
+
+                  <div className="rounded-xl border border-[#23252a] bg-[#0f1011] overflow-hidden shadow-lg">
+                    <div
+                      onClick={() => toggleAgentExpand("03")}
+                      className="flex items-center justify-between p-4 bg-[#141516]/80 cursor-pointer hover:bg-[#141516] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#010102] border border-[#23252a] text-[#828fff]">
+                          Agent 03
+                        </span>
+                        <div>
+                          <h4 className="text-xs font-bold text-[#f7f8f8]">
+                            Alternative Sourcing Agent
+                          </h4>
+                          <span className="text-[10px] text-[#8a8f98]">
+                            {agentPipeline[2].role} • Model: <span className="font-mono text-[#828fff]">{agentPipeline[2].model}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge variant={agentPipeline[2].status === "completed" ? "success" : "neutral"}>
+                          {agentPipeline[2].status.toUpperCase()}
+                        </Badge>
+                        {expandedAgents["03"] ? (
+                          <ChevronUp className="h-4 w-4 text-[#8a8f98]" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-[#8a8f98]" />
+                        )}
+                      </div>
+                    </div>
+
+                    {expandedAgents["03"] && (
+                      <div className="p-4 border-t border-[#23252a] space-y-4 bg-[#090a0f]">
+                        <MarkdownRenderer
+                          content={workflowResult?.alternatives?.agentSummary || agentPipeline[2].description}
+                        />
+
+                        {workflowResult?.alternatives?.matches && workflowResult.alternatives.matches.length > 0 ? (
+                          <div className="space-y-2">
+                            {workflowResult.alternatives.matches.map((m: any, mIdx: number) => (
+                              <div key={mIdx} className="rounded-lg border border-[#23252a] bg-[#010102] p-3 text-xs space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-mono font-bold text-[#f7f8f8]">{m.partNumber}</span>
+                                  <Badge variant={m.hasMatches ? "success" : "neutral"}>
+                                    {m.hasMatches ? `${m.recommendations?.length || 0} Alternatives Found` : "No Direct Warehouse Alternative"}
+                                  </Badge>
+                                </div>
+
+                                {m.recommendations?.map((rec: any, rIdx: number) => (
+                                  <div key={rIdx} className="rounded bg-[#141516] p-2 border border-[#23252a] text-[11px] space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-bold text-[#828fff]">{rec.title}</span>
+                                      <span className="text-[#4ade80] font-mono">{rec.confidenceScore}% Confidence</span>
+                                    </div>
+                                    <p className="text-[#8a8f98]">{rec.engineeringNotes}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-3 rounded-lg bg-[#010102] border border-[#23252a] text-center text-xs text-[#8a8f98]">
+                            No active shortage items required alternative matching.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative group">
+                  <div className="absolute -left-[35px] sm:-left-[41px] top-1">
+                    {renderLollipopNodeIcon(agentPipeline[3])}
+                  </div>
+
+                  <div className="rounded-xl border border-[#23252a] bg-[#0f1011] overflow-hidden shadow-lg">
+                    <div
+                      onClick={() => toggleAgentExpand("04")}
+                      className="flex items-center justify-between p-4 bg-[#141516]/80 cursor-pointer hover:bg-[#141516] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#010102] border border-[#23252a] text-[#828fff]">
+                          Agent 04
+                        </span>
+                        <div>
+                          <h4 className="text-xs font-bold text-[#f7f8f8]">
+                            Distributor Matrix Agent
+                          </h4>
+                          <span className="text-[10px] text-[#8a8f98]">
+                            {agentPipeline[3].role} • Model: <span className="font-mono text-[#828fff]">{agentPipeline[3].model}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge variant={agentPipeline[3].status === "completed" ? "success" : "neutral"}>
+                          {agentPipeline[3].status.toUpperCase()}
+                        </Badge>
+                        {expandedAgents["04"] ? (
+                          <ChevronUp className="h-4 w-4 text-[#8a8f98]" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-[#8a8f98]" />
+                        )}
+                      </div>
+                    </div>
+
+                    {expandedAgents["04"] && (
+                      <div className="p-4 border-t border-[#23252a] space-y-4 bg-[#090a0f]">
+                        <MarkdownRenderer
+                          content={workflowResult?.supplierDiscovery?.agentSummary || agentPipeline[3].description}
+                        />
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="p-3 rounded-lg bg-[#010102] border border-[#23252a]">
+                            <span className="text-[10px] text-[#8a8f98] block">DigiKey Express</span>
+                            <span className="text-xs font-bold text-[#828fff]">Avg 2.0 days • Reliability 98.5%</span>
+                          </div>
+                          <div className="p-3 rounded-lg bg-[#010102] border border-[#23252a]">
+                            <span className="text-[10px] text-[#8a8f98] block">Mouser Global</span>
+                            <span className="text-xs font-bold text-[#828fff]">Avg 3.0 days • Reliability 97.0%</span>
+                          </div>
+                          <div className="p-3 rounded-lg bg-[#010102] border border-[#23252a]">
+                            <span className="text-[10px] text-[#8a8f98] block">LCSC Volume</span>
+                            <span className="text-xs font-bold text-[#828fff]">Avg 7.0 days • Reliability 92.0%</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative group">
+                  <div className="absolute -left-[35px] sm:-left-[41px] top-1">
+                    {renderLollipopNodeIcon(agentPipeline[4])}
+                  </div>
+
+                  <div className="rounded-xl border border-[#23252a] bg-[#0f1011] overflow-hidden shadow-lg">
+                    <div
+                      onClick={() => toggleAgentExpand("05")}
+                      className="flex items-center justify-between p-4 bg-[#141516]/80 cursor-pointer hover:bg-[#141516] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#010102] border border-[#23252a] text-[#828fff]">
+                          Agent 05
+                        </span>
+                        <div>
+                          <h4 className="text-xs font-bold text-[#f7f8f8]">
+                            Plan Formulation Agent
+                          </h4>
+                          <span className="text-[10px] text-[#8a8f98]">
+                            {agentPipeline[4].role} • Model: <span className="font-mono text-[#828fff]">{agentPipeline[4].model}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge variant={agentPipeline[4].status === "completed" ? "success" : "neutral"}>
+                          {agentPipeline[4].status.toUpperCase()}
+                        </Badge>
+                        {expandedAgents["05"] ? (
+                          <ChevronUp className="h-4 w-4 text-[#8a8f98]" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-[#8a8f98]" />
+                        )}
+                      </div>
+                    </div>
+
+                    {expandedAgents["05"] && (
+                      <div className="p-4 border-t border-[#23252a] space-y-4 bg-[#090a0f]">
+                        <MarkdownRenderer
+                          content={workflowResult?.purchaseOrderPlan?.agentSummary || agentPipeline[4].description}
+                        />
+
+                        {workflowResult?.processPlan?.purchaseOrders && workflowResult.processPlan.purchaseOrders.length > 0 && (
+                          <div className="space-y-2">
+                            <span className="text-[11px] font-bold text-[#f7f8f8] flex items-center gap-1.5">
+                              <Truck className="h-3.5 w-3.5 text-[#5e6ad2]" />
+                              <span>Formulated Purchase Orders:</span>
+                            </span>
+
+                            <div className="overflow-x-auto rounded-lg border border-[#23252a]">
+                              <table className="w-full text-left text-xs">
+                                <thead className="bg-[#141516] text-[#8a8f98] border-b border-[#23252a]">
+                                  <tr>
+                                    <th className="p-2.5">Supplier</th>
+                                    <th className="p-2.5">Part Number</th>
+                                    <th className="p-2.5">Lot Quantity</th>
+                                    <th className="p-2.5">Unit Price</th>
+                                    <th className="p-2.5 text-right">Total Line Cost</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#23252a] text-[#d0d6e0]">
+                                  {workflowResult.processPlan.purchaseOrders.map((po: any, pIdx: number) => (
+                                    <tr key={pIdx} className="hover:bg-[#141516]/50">
+                                      <td className="p-2.5 font-bold text-[#828fff]">
+                                        {po.supplierCode || po.supplierName}
+                                      </td>
+                                      <td className="p-2.5 font-mono">{po.partNumber}</td>
+                                      <td className="p-2.5">{po.orderQuantity} pcs</td>
+                                      <td className="p-2.5">${po.unitPrice?.toFixed(3)}</td>
+                                      <td className="p-2.5 text-right font-semibold text-[#f7f8f8]">
+                                        ${(po.orderQuantity * po.unitPrice).toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative group">
+                  <div className="absolute -left-[35px] sm:-left-[41px] top-1">
+                    {renderLollipopNodeIcon(agentPipeline[5])}
+                  </div>
+
+                  <div className="rounded-xl border-2 border-[#5e6ad2] bg-[#0f1011] overflow-hidden shadow-2xl ring-1 ring-[#5e6ad2]/50">
+                    <div
+                      onClick={() => toggleAgentExpand("06")}
+                      className="flex items-center justify-between p-4 bg-[#14172e] cursor-pointer hover:bg-[#1a1e3a] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#5e6ad2] text-white font-bold">
+                          HITL Node 06
+                        </span>
+                        <div>
+                          <h4 className="text-xs font-bold text-[#f7f8f8] flex items-center gap-1.5">
+                            <ShieldCheck className="h-4 w-4 text-[#4ade80]" />
+                            <span>Human-In-The-Loop (HITL) Execution Guardrail</span>
+                          </h4>
+                          <span className="text-[10px] text-[#8a8f98]">
+                            Deterministic Governance • Awaits User Authorization
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge variant={approvalResult ? "success" : workflowResult ? "primary" : "neutral"}>
+                          {approvalResult ? "EXECUTED & LOCKED" : workflowResult ? "AWAITING USER APPROVAL" : "PENDING"}
+                        </Badge>
+                        {expandedAgents["06"] ? (
+                          <ChevronUp className="h-4 w-4 text-[#8a8f98]" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-[#8a8f98]" />
+                        )}
+                      </div>
+                    </div>
+
+                    {expandedAgents["06"] && (
+                      <div className="p-5 border-t border-[#282d5c] space-y-4 bg-[#0d0e17]">
+                        {approvalResult ? (
+                          <div className="rounded-xl border border-[#14532d] bg-[#0d2e16] p-4 text-xs space-y-3">
+                            <div className="flex items-center gap-2 text-[#4ade80] font-bold text-sm">
+                              <CheckCircle2 className="h-5 w-5" />
+                              <span>Human-In-The-Loop Execution Authorized & Completed</span>
+                            </div>
+                            <p className="text-[#d0d6e0] leading-relaxed">
+                              Warehouse inventory has been reserved in PostgreSQL, and formal Purchase Orders have been generated in the system.
+                            </p>
+                            <div className="flex items-center gap-3 pt-1">
+                              <Link href="/purchase-orders">
+                                <Button variant="secondary" size="sm">
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                  <span>View Purchase Orders</span>
+                                </Button>
+                              </Link>
+                              <Link href="/inventory">
+                                <Button variant="secondary" size="sm">
+                                  <Boxes className="h-3.5 w-3.5" />
+                                  <span>View Warehouse Stock</span>
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {workflowResult?.processPlan?.agentSummary && (
+                              <div className="p-3.5 rounded-xl border border-[#23252a] bg-[#010102]">
+                                <MarkdownRenderer content={workflowResult.processPlan.agentSummary} />
+                              </div>
+                            )}
+
+                            <p className="text-xs text-[#d0d6e0] leading-relaxed">
+                              As the Human Engineer, review and authorize the execution actions below:
+                            </p>
+
+                            <div className="space-y-2.5 bg-[#010102] p-3.5 rounded-xl border border-[#23252a]">
+                              <label
+                                onClick={() => setConfirmReserveStock(!confirmReserveStock)}
+                                className="flex items-center gap-2.5 cursor-pointer text-xs text-[#f7f8f8]"
+                              >
+                                {confirmReserveStock ? (
+                                  <CheckSquare className="h-4 w-4 text-[#4ade80]" />
+                                ) : (
+                                  <Square className="h-4 w-4 text-[#8a8f98]" />
+                                )}
+                                <span>Reserve and allocate matching warehouse inventory in database</span>
+                              </label>
+
+                              <label
+                                onClick={() => setConfirmDraftPOs(!confirmDraftPOs)}
+                                className="flex items-center gap-2.5 cursor-pointer text-xs text-[#f7f8f8]"
+                              >
+                                {confirmDraftPOs ? (
+                                  <CheckSquare className="h-4 w-4 text-[#4ade80]" />
+                                ) : (
+                                  <Square className="h-4 w-4 text-[#8a8f98]" />
+                                )}
+                                <span>Commit proposed supplier Purchase Orders to the procurement pipeline</span>
+                              </label>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-2">
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                disabled={!workflowResult || isApproving || (!confirmReserveStock && !confirmDraftPOs)}
+                                isLoading={isApproving}
+                                onClick={handleApprovePlan}
+                                className="px-6 py-2"
+                              >
+                                <Check className="h-4 w-4 mr-1.5" />
+                                <span>Authorize & Execute HITL Plan</span>
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
           </div>
         )}
 

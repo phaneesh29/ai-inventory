@@ -1,0 +1,8 @@
+Part Number	Description	Designator	Quantity	Footprint	Category
+ESP32-WROOM-32E-N4	Espressif Dual-Core Wi-Fi & BLE MCU Module	U1	1	SMD Module 38-Pin	Microcontroller
+STM32F103C8T6	STMicroelectronics ARM Cortex-M3 72MHz MCU	U2	1	LQFP-48	Microcontroller
+RC0805FR-0710KL	Yageo 10k Ohm 1% 1/8W SMD Resistor 0805	R1 R2 R3 R4	4	0805	Resistor
+CRCW080510K0FKEA	Vishay Dale 10k Ohm 1% 1/8W SMD Resistor 0805	R5 R6	2	0805	Resistor
+SSD1306-0.96-OLED-I2C	Solomon Systech 0.96 inch 128x64 I2C OLED Display Module	DISP1	1	4-Pin Breakout	Other
+TPS54331DR	Texas Instruments 3A 28V Step Down DC-DC Converter	U3	1	SOIC-8	Power Management
+CL21A106KOQNNNE	Samsung 10uF 16V X5R 0805 Ceramic Capacitor	C1 C2 C3	3	0805	Capacitor

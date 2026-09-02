@@ -194,21 +194,25 @@ ${poLines}
   };
 };
 
-export const executeApprovedProcessPlan = async (params: ExecuteApprovedPlanParams) => {
+export const executeApprovedProcessPlan = async (params: any) => {
+  const substitutions = params.substitutions || params.plan?.componentChanges || params.plan?.substitutions || [];
+  const reservations = params.reservations || params.plan?.stockReservations || params.plan?.reservations || [];
+  const purchaseOrders = params.purchaseOrders || params.plan?.draftPurchaseOrders || params.plan?.purchaseOrders || [];
+
   let reservationsResult = null;
   let substitutionsResult = null;
   let purchaseOrdersResult: CommittedPurchaseOrder[] = [];
 
-  if (params.substitutions.length > 0) {
-    substitutionsResult = await applySubstitutionsInDB(params.substitutions);
+  if (Array.isArray(substitutions) && substitutions.length > 0) {
+    substitutionsResult = await applySubstitutionsInDB(substitutions);
   }
 
-  if (params.reservations.length > 0) {
-    reservationsResult = await reserveStockInDB(params.reservations);
+  if (Array.isArray(reservations) && reservations.length > 0) {
+    reservationsResult = await reserveStockInDB(reservations);
   }
 
-  if (params.purchaseOrders && params.purchaseOrders.length > 0) {
-    purchaseOrdersResult = await commitPurchaseOrdersToDB(params.purchaseOrders);
+  if (Array.isArray(purchaseOrders) && purchaseOrders.length > 0) {
+    purchaseOrdersResult = await commitPurchaseOrdersToDB(purchaseOrders);
   }
 
   return {
@@ -216,6 +220,6 @@ export const executeApprovedProcessPlan = async (params: ExecuteApprovedPlanPara
     status: "APPROVED_AND_EXECUTED",
     substitutionsApplied: substitutionsResult,
     stockReservationsApplied: reservationsResult,
-    purchaseOrdersIssued: purchaseOrdersResult,
+    purchaseOrdersCreated: purchaseOrdersResult,
   };
 };

@@ -22,8 +22,12 @@ export const parseUploadedBOMFile = async (file: Express.Multer.File): Promise<P
 
   if (ext === "csv" || ext === "txt") {
     const rawText = file.buffer.toString("utf-8");
+    const firstLine = rawText.split(/\r?\n/).find((l) => l.trim().length > 0) || "";
+    const delimiter = firstLine.includes("\t") ? "\t" : firstLine.includes(";") ? ";" : ",";
+
     try {
       const records = parse(rawText, {
+        delimiter,
         columns: true,
         skip_empty_lines: true,
         trim: true,
