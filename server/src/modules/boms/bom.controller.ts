@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import * as bomService from "./bom.service.js";
 import { runBOMAgent } from "./bom.agent.js";
 import { parseUploadedBOMFile } from "./bom.parser.js";
-import { createWorkspace } from "../workspaces/workspace.service.js";
 import { sendSuccess } from "../../utils/apiResponse.js";
 import { BadRequestError, InternalServerError } from "../../utils/errors.js";
 import type { CreateBOMInput, UpdateBOMInput, AddBOMItemsInput } from "./bom.schema.js";
@@ -12,18 +11,15 @@ export const uploadBOMFile = async (req: Request, res: Response): Promise<Respon
     throw new BadRequestError("File is required for upload");
   }
 
-  let workspaceId = req.body.workspaceId;
+  const workspaceId = req.body.workspaceId;
+  if (!workspaceId) {
+    throw new BadRequestError("workspaceId is required for upload");
+  }
+
   const fileNameWithoutExt = req.file.originalname.replace(/\.[^/.]+$/, "");
   const bomName = req.body.name || fileNameWithoutExt || "Uploaded BOM";
   const version = req.body.version || "v1.0";
   const instructions = req.body.instructions;
-
-  if (!workspaceId) {
-    const newWorkspace = await createWorkspace({
-      name: `Workspace - ${bomName}`,
-    });
-    workspaceId = newWorkspace.id;
-  }
 
   const parsed = await parseUploadedBOMFile(req.file);
 
