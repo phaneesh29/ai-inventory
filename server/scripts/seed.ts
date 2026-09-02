@@ -1,4 +1,4 @@
-import { db, itemsTable, inventoryTable } from "../src/db/index.js";
+import { db, itemsTable, inventoryTable, suppliersTable, supplierItemsTable } from "../src/db/index.js";
 import { eq } from "drizzle-orm";
 
 const realWorldElectronicsCatalog = [
@@ -54,22 +54,6 @@ const realWorldElectronicsCatalog = [
     },
   },
   {
-    partNumber: "ESP32-C3-WROOM-02-N4",
-    name: "Espressif ESP32-C3 RISC-V 32-bit Single-Core MCU",
-    description: "Espressif cost-optimized 160MHz single-core 32-bit RISC-V microcontroller with 4MB embedded Flash.",
-    category: "Microcontroller",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Espressif Systems",
-      architecture: "32-bit RISC-V Single-Core (RV32IMC)",
-      clockSpeed: "160 MHz",
-      flashSize: "4 MB",
-      sramSize: "400 KB",
-      wireless: "Wi-Fi 802.11 b/g/n + Bluetooth 5 (LE)",
-      packageFootprint: "SMD Module 18-Pin (18x20mm)",
-    },
-  },
-  {
     partNumber: "STM32F103C8T6",
     name: "STMicroelectronics STM32F103C8T6 ARM Cortex-M3 72MHz MCU",
     description: "STMicroelectronics mainstream performance line ARM Cortex-M3 32-bit MCU with 64KB Flash in LQFP-48.",
@@ -81,90 +65,8 @@ const realWorldElectronicsCatalog = [
       clockSpeed: "72 MHz",
       flashMemory: "64 KB",
       sram: "20 KB",
-      interfaces: "2x SPI, 2x I2C, 3x USART, 1x USB 2.0 Full-Speed, 1x CAN 2.0B",
       packageFootprint: "LQFP-48 (7x7mm)",
       voltage: "2.0V - 3.6V",
-    },
-  },
-  {
-    partNumber: "STM32F401RET6",
-    name: "STMicroelectronics STM32F401RE ARM Cortex-M4 84MHz MCU",
-    description: "STMicroelectronics dynamic efficiency line ARM Cortex-M4 MCU with FPU, 512KB Flash, 96KB SRAM in LQFP-64.",
-    category: "Microcontroller",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "STMicroelectronics",
-      core: "ARM Cortex-M4 with FPU",
-      clockSpeed: "84 MHz",
-      flashMemory: "512 KB",
-      sram: "96 KB",
-      interfaces: "3x SPI, 3x I2C, 3x USART, 1x USB 2.0 OTG FS",
-      packageFootprint: "LQFP-64 (10x10mm)",
-      voltage: "1.7V - 3.6V",
-    },
-  },
-  {
-    partNumber: "STM32F411CEU6",
-    name: "STMicroelectronics STM32F411CE ARM Cortex-M4 100MHz MCU",
-    description: "STMicroelectronics high performance ARM Cortex-M4 MCU with 512KB Flash and 128KB SRAM in compact UFQFPN-48.",
-    category: "Microcontroller",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "STMicroelectronics",
-      core: "ARM Cortex-M4 with FPU",
-      clockSpeed: "100 MHz",
-      flashMemory: "512 KB",
-      sram: "128 KB",
-      packageFootprint: "UFQFPN-48 (7x7mm)",
-      voltage: "1.7V - 3.6V",
-    },
-  },
-  {
-    partNumber: "ATMEGA328P-PU",
-    name: "Microchip ATmega328P DIP-28 8-Bit AVR Microcontroller",
-    description: "Microchip 20MHz 8-bit AVR RISC microcontroller with 32KB ISP Flash memory in DIP-28 through-hole package.",
-    category: "Microcontroller",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Microchip Technology",
-      architecture: "8-bit AVR RISC",
-      clockSpeed: "20 MHz",
-      flashMemory: "32 KB",
-      sram: "2 KB",
-      eeprom: "1 KB",
-      packageFootprint: "DIP-28",
-      voltage: "1.8V - 5.5V",
-    },
-  },
-  {
-    partNumber: "ATMEGA328P-AU",
-    name: "Microchip ATmega328P TQFP-32 8-Bit AVR Microcontroller",
-    description: "Microchip 20MHz 8-bit AVR RISC microcontroller with 32KB ISP Flash in compact 32-lead surface mount TQFP package.",
-    category: "Microcontroller",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Microchip Technology",
-      architecture: "8-bit AVR RISC",
-      clockSpeed: "20 MHz",
-      flashMemory: "32 KB",
-      sram: "2 KB",
-      packageFootprint: "TQFP-32 (7x7mm)",
-      voltage: "1.8V - 5.5V",
-    },
-  },
-  {
-    partNumber: "RP2040",
-    name: "Raspberry Pi RP2040 Dual ARM Cortex-M0+ Microcontroller",
-    description: "Raspberry Pi Foundation designed 133MHz dual-core ARM Cortex-M0+ microcontroller with 264KB internal SRAM and 8 PIO state machines.",
-    category: "Microcontroller",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Raspberry Pi Foundation",
-      cores: "Dual ARM Cortex-M0+",
-      clockSpeed: "133 MHz",
-      sram: "264 KB",
-      packageFootprint: "QFN-56 (7x7mm)",
-      voltage: "1.8V - 3.3V",
     },
   },
   {
@@ -198,392 +100,6 @@ const realWorldElectronicsCatalog = [
     },
   },
   {
-    partNumber: "ERJ-6GEYJ103V",
-    name: "Panasonic 10k Ohm 5% 1/8W SMD Resistor 0805",
-    description: "Panasonic ERJ series thick film chip resistor 10kΩ ±5% 0.125W.",
-    category: "Resistor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Panasonic",
-      resistance: "10k Ohm",
-      tolerance: "±5%",
-      powerRating: "0.125W (1/8W)",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "RC0603FR-0710KL",
-    name: "Yageo 10k Ohm 1% 1/10W SMD Resistor 0603",
-    description: "Yageo RC0603 series miniature thick film surface mount chip resistor 10kΩ ±1% 0.1W in 0603 package.",
-    category: "Resistor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Yageo",
-      resistance: "10k Ohm",
-      tolerance: "±1%",
-      powerRating: "0.1W (1/10W)",
-      packageFootprint: "0603 (1608 Metric)",
-    },
-  },
-  {
-    partNumber: "MFR-25FRF52-10K",
-    name: "Yageo 10k Ohm 1% 1/4W Metal Film Resistor Axial",
-    description: "Yageo MFR series high precision metal film through-hole axial leaded resistor 10kΩ ±1% 0.25W.",
-    category: "Resistor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Yageo",
-      resistance: "10k Ohm",
-      tolerance: "±1%",
-      powerRating: "0.25W (1/4W)",
-      packageFootprint: "Axial Leaded",
-    },
-  },
-  {
-    partNumber: "RC0805FR-071KL",
-    name: "Yageo 1k Ohm 1% 1/8W SMD Resistor 0805",
-    description: "Yageo RC0805 series thick film surface mount chip resistor 1kΩ ±1% 0.125W.",
-    category: "Resistor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Yageo",
-      resistance: "1k Ohm",
-      tolerance: "±1%",
-      powerRating: "0.125W (1/8W)",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "RC0805FR-07220RL",
-    name: "Yageo 220 Ohm 1% 1/8W SMD Resistor 0805",
-    description: "Yageo RC0805 series thick film surface mount chip resistor 220Ω ±1% 0.125W for LED current limiting.",
-    category: "Resistor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Yageo",
-      resistance: "220 Ohm",
-      tolerance: "±1%",
-      powerRating: "0.125W (1/8W)",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "RC0805FR-074K7L",
-    name: "Yageo 4.7k Ohm 1% 1/8W SMD Resistor 0805",
-    description: "Yageo RC0805 series thick film surface mount chip resistor 4.7kΩ ±1% 0.125W standard I2C bus pull-up.",
-    category: "Resistor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Yageo",
-      resistance: "4.7k Ohm",
-      tolerance: "±1%",
-      powerRating: "0.125W (1/8W)",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "CL21B106KOQNNNE",
-    name: "Samsung 10uF 16V X7R Ceramic Capacitor 0805",
-    description: "Samsung Electro-Mechanics multi-layer ceramic chip capacitor (MLCC) 10µF 16V ±10% X7R.",
-    category: "Capacitor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Samsung Electro-Mechanics",
-      capacitance: "10 uF",
-      voltageRating: "16V DC",
-      dielectric: "X7R",
-      tolerance: "±10%",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "GRM21BR71C106KE51L",
-    name: "Murata 10uF 16V X7R Ceramic Capacitor 0805",
-    description: "Murata GRM series multi-layer ceramic chip capacitor (MLCC) 10µF 16V ±10% X7R.",
-    category: "Capacitor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Murata Electronics",
-      capacitance: "10 uF",
-      voltageRating: "16V DC",
-      dielectric: "X7R",
-      tolerance: "±10%",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "CC0805KRX7R9BB104",
-    name: "Yageo 100nF (0.1uF) 50V X7R Ceramic Capacitor 0805",
-    description: "Yageo surface mount ceramic chip capacitor 0.1µF 50V ±10% X7R for IC power rail decoupling.",
-    category: "Capacitor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Yageo",
-      capacitance: "100 nF (0.1 uF)",
-      voltageRating: "50V DC",
-      dielectric: "X7R",
-      tolerance: "±10%",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "C0805C104K5RACTU",
-    name: "KEMET 100nF (0.1uF) 50V X7R Ceramic Capacitor 0805",
-    description: "KEMET surface mount commercial grade MLCC 0.1µF 50V ±10% X7R in 0805 package.",
-    category: "Capacitor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "KEMET",
-      capacitance: "100 nF (0.1 uF)",
-      voltageRating: "50V DC",
-      dielectric: "X7R",
-      tolerance: "±10%",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "UVP1E101MPD",
-    name: "Nichicon 100uF 25V Radial Electrolytic Capacitor",
-    description: "Nichicon VP series bi-polarized aluminum electrolytic capacitor 100µF 25V 20% radial leaded.",
-    category: "Capacitor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Nichicon",
-      capacitance: "100 uF",
-      voltageRating: "25V DC",
-      tolerance: "±20%",
-      packageFootprint: "Radial Can (8x11.5mm)",
-    },
-  },
-  {
-    partNumber: "CC0805JRNPO9BN220",
-    name: "Yageo 22pF 50V C0G/NP0 Ceramic Capacitor 0805",
-    description: "Yageo ultra-stable C0G/NP0 dielectric ceramic capacitor 22pF 50V ±5% for 16MHz/32MHz crystal oscillators.",
-    category: "Capacitor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Yageo",
-      capacitance: "22 pF",
-      voltageRating: "50V DC",
-      dielectric: "C0G / NP0",
-      tolerance: "±5%",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "1N4007-TP",
-    name: "MCC 1N4007 1A 1000V Standard Recovery Rectifier Diode",
-    description: "Micro Commercial Co standard recovery power rectifier diode 1A 1000V in axial leaded DO-41 package.",
-    category: "Diode",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Micro Commercial Components (MCC)",
-      forwardCurrent: "1A",
-      peakReverseVoltage: "1000V",
-      packageFootprint: "DO-41 Axial",
-    },
-  },
-  {
-    partNumber: "1N4148WS-7-F",
-    name: "Diodes Inc 1N4148WS 100V 300mA High-Speed Switching Diode",
-    description: "Diodes Incorporated fast switching surface mount diode 100V 300mA 4ns recovery time in SOD-323.",
-    category: "Diode",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Diodes Incorporated",
-      reverseVoltage: "100V",
-      forwardCurrent: "300mA",
-      packageFootprint: "SOD-323",
-    },
-  },
-  {
-    partNumber: "B5819W-TP",
-    name: "MCC 1N5819 (B5819W) 1A 40V Schottky Barrier Diode SOD-123",
-    description: "Micro Commercial Co 1A 40V low forward voltage drop Schottky barrier diode in SOD-123 for reverse polarity protection.",
-    category: "Diode",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Micro Commercial Components (MCC)",
-      forwardCurrent: "1A",
-      reverseVoltage: "40V",
-      packageFootprint: "SOD-123",
-    },
-  },
-  {
-    partNumber: "150080RS75000",
-    name: "Würth Elektronik Red SMD LED 0805 Clear Lens",
-    description: "Würth Elektronik WL-SMCW series red surface mount chip LED 625nm 120mcd 0805.",
-    category: "LED",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Würth Elektronik",
-      color: "Red",
-      dominantWavelength: "625 nm",
-      forwardVoltage: "2.0V",
-      forwardCurrent: "20 mA",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "150080GS75000",
-    name: "Würth Elektronik Green SMD LED 0805 Clear Lens",
-    description: "Würth Elektronik WL-SMCW series green surface mount chip LED 525nm 260mcd 0805.",
-    category: "LED",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Würth Elektronik",
-      color: "Green",
-      dominantWavelength: "525 nm",
-      forwardVoltage: "3.2V",
-      forwardCurrent: "20 mA",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "150080BS75000",
-    name: "Würth Elektronik Blue SMD LED 0805 Clear Lens",
-    description: "Würth Elektronik WL-SMCW series blue surface mount chip LED 470nm 140mcd 0805.",
-    category: "LED",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Würth Elektronik",
-      color: "Blue",
-      dominantWavelength: "470 nm",
-      forwardVoltage: "3.2V",
-      forwardCurrent: "20 mA",
-      packageFootprint: "0805 (2012 Metric)",
-    },
-  },
-  {
-    partNumber: "AMS1117-3.3",
-    name: "Advanced Monolithic Systems AMS1117 3.3V 1A LDO Regulator",
-    description: "AMS1117 series low dropout positive voltage regulator fixed 3.3V 1A output in SOT-223.",
-    category: "IC",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Advanced Monolithic Systems",
-      outputVoltage: "3.3V Fixed",
-      maxOutputCurrent: "1.0A",
-      packageFootprint: "SOT-223",
-    },
-  },
-  {
-    partNumber: "AZ1117EH-3.3TRG1",
-    name: "Diodes Inc AZ1117E 3.3V 1A Low Dropout Regulator",
-    description: "Diodes Incorporated low dropout linear regulator 3.3V 1A with thermal shutdown in SOT-223.",
-    category: "IC",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Diodes Incorporated",
-      outputVoltage: "3.3V Fixed",
-      maxOutputCurrent: "1.0A",
-      packageFootprint: "SOT-223",
-    },
-  },
-  {
-    partNumber: "LM7805CT",
-    name: "Texas Instruments LM7805 5V 1.5A Positive Linear Regulator",
-    description: "Texas Instruments 3-terminal positive voltage regulator 5.0V 1.5A in TO-220 package.",
-    category: "IC",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Texas Instruments",
-      outputVoltage: "5.0V Fixed",
-      maxOutputCurrent: "1.5A",
-      packageFootprint: "TO-220-3",
-    },
-  },
-  {
-    partNumber: "2N7002-7-F",
-    name: "Diodes Inc 2N7002 60V 115mA N-Channel MOSFET SOT-23",
-    description: "Diodes Incorporated N-Channel enhancement mode field effect transistor 60V 115mA in SOT-23.",
-    category: "Transistor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Diodes Incorporated",
-      drainSourceVoltage: "60V",
-      continuousDrainCurrent: "115 mA",
-      packageFootprint: "SOT-23-3",
-    },
-  },
-  {
-    partNumber: "BME280",
-    name: "Bosch Sensortec BME280 Temp, Humidity & Pressure Sensor",
-    description: "Bosch Sensortec high precision digital environmental sensor with I2C and SPI interfaces in LGA-8 package.",
-    category: "Sensor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Bosch Sensortec",
-      humidityRange: "0% to 100% RH",
-      pressureRange: "300 to 1100 hPa",
-      temperatureRange: "-40°C to 85°C",
-      packageFootprint: "LGA-8 (2.5x2.5mm)",
-    },
-  },
-  {
-    partNumber: "BMP280",
-    name: "Bosch Sensortec BMP280 Barometric Pressure & Temp Sensor",
-    description: "Bosch Sensortec compact digital barometric pressure and temperature sensor with I2C/SPI interfaces.",
-    category: "Sensor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Bosch Sensortec",
-      pressureRange: "300 to 1100 hPa",
-      temperatureRange: "-40°C to 85°C",
-      packageFootprint: "LGA-8 (2.0x2.5mm)",
-    },
-  },
-  {
-    partNumber: "DHT22",
-    name: "Aosong DHT22 (AM2302) Digital Temp & Humidity Sensor",
-    description: "Aosong capacitive humidity and thermistor temperature sensor module with single-wire digital interface.",
-    category: "Sensor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Aosong Electronics",
-      humidityRange: "0% - 99.9% RH",
-      temperatureRange: "-40°C to 80°C",
-      packageFootprint: "4-Pin Module",
-    },
-  },
-  {
-    partNumber: "HC-SR04",
-    name: "ElecFreaks HC-SR04 Ultrasonic Distance Sensor Module",
-    description: "Standard ultrasonic ranging module with 2cm to 400cm non-contact measurement range, 5V operating voltage.",
-    category: "Sensor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "ElecFreaks",
-      range: "2cm to 400cm",
-      operatingVoltage: "5V DC",
-      packageFootprint: "Module with 2 Transducers",
-    },
-  },
-  {
-    partNumber: "HC-SR501",
-    name: "PIR Motion Detector Sensor Module HC-SR501",
-    description: "Passive infrared PIR motion sensor module with adjustable sensitivity and delay time for human presence detection.",
-    category: "Sensor",
-    unit: "pcs",
-    specifications: {
-      detectionRange: "Up to 7 meters",
-      operatingVoltage: "4.5V - 20V DC",
-      packageFootprint: "PCB Module with Lens",
-    },
-  },
-  {
-    partNumber: "DS18B20",
-    name: "Maxim DS18B20 Programmable Resolution 1-Wire Digital Thermometer",
-    description: "Maxim Integrated 1-Wire digital temperature sensor with 9-bit to 12-bit user-configurable resolution in TO-92.",
-    category: "Sensor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Maxim Integrated",
-      tempRange: "-55°C to 125°C",
-      packageFootprint: "TO-92",
-    },
-  },
-  {
     partNumber: "SSD1306-0.96-OLED-I2C",
     name: "Solomon Systech SSD1306 0.96 inch 128x64 I2C OLED Display Module",
     description: "0.96-inch monochrome blue/white OLED graphic display module with built-in SSD1306 controller and I2C interface.",
@@ -596,69 +112,6 @@ const realWorldElectronicsCatalog = [
       packageFootprint: "4-Pin Breakout Module",
     },
   },
-  {
-    partNumber: "TYPE-C-31-M-12",
-    name: "Korean Hroparts 16-Pin USB Type-C Receptacle Hybrid SMD/THT",
-    description: "Korean Hroparts 16-pin USB Type-C female connector with mid-mount SMD pins and 4 through-hole shielding retention legs.",
-    category: "Connector",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Korean Hroparts Electronics",
-      pinCount: 16,
-      currentRating: "3.0A",
-      packageFootprint: "Hybrid SMD + 4 THT Shell Posts",
-    },
-  },
-  {
-    partNumber: "61304011121",
-    name: "Würth Elektronik 40-Pin 2.54mm Breakaway Pin Header Male",
-    description: "Würth Elektronik WR-PHD series 2.54mm pitch 40-pin single row straight through-hole male pin header strip.",
-    category: "Connector",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Würth Elektronik",
-      pitch: "2.54 mm",
-      numberOfPositions: 40,
-      packageFootprint: "Through-Hole Vertical",
-    },
-  },
-  {
-    partNumber: "B3F-1000",
-    name: "Omron 6x6mm SPST Tactile Push Button Switch",
-    description: "Omron Electronics B3F series 6x6x4.3mm miniature tactile push button switch SPST-NO through-hole.",
-    category: "Other",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Omron Electronics",
-      contactRating: "50 mA @ 24V DC",
-      packageFootprint: "Through-Hole 4-Pin",
-    },
-  },
-  {
-    partNumber: "CH340C",
-    name: "WCH CH340C USB to UART Serial Bridge IC Internal Oscillator",
-    description: "Jiangsu Qinheng Microelectronics (WCH) USB to serial UART interface converter with internal clock generator in SOP-16.",
-    category: "IC",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "WCH",
-      function: "USB 2.0 to UART Serial Bridge",
-      packageFootprint: "SOP-16",
-    },
-  },
-  {
-    partNumber: "SRD-05VDC-SL-C",
-    name: "Songle 5V 10A SPDT Miniature Power Relay",
-    description: "Songle PCB subminiature sugar cube power relay 5V coil SPDT 10A 250VAC / 30VDC switching.",
-    category: "Other",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Songle Relay",
-      coilVoltage: "5V DC",
-      contactRating: "10A 250VAC",
-      packageFootprint: "PCB 5-Pin Through-Hole",
-    },
-  },
 ];
 
 const inventorySeedProfiles: Record<
@@ -669,42 +122,46 @@ const inventorySeedProfiles: Record<
   "ESP32-WROOM-32E-N8": { onHand: 400, reserved: 0, threshold: 50, location: "Warehouse Shelf A-2", cost: 3.20 },
   "ESP32-S3-WROOM-1-N8R8": { onHand: 250, reserved: 0, threshold: 40, location: "Warehouse Shelf A-3", cost: 4.50 },
   "STM32F103C8T6": { onHand: 600, reserved: 100, threshold: 50, location: "Warehouse Shelf B-1", cost: 2.40 },
-  "STM32F401RET6": { onHand: 350, reserved: 0, threshold: 50, location: "Warehouse Shelf B-2", cost: 3.80 },
-  "ATMEGA328P-PU": { onHand: 500, reserved: 0, threshold: 50, location: "Warehouse Shelf B-3", cost: 1.95 },
-  "RP2040": { onHand: 1200, reserved: 200, threshold: 100, location: "Warehouse Shelf B-4", cost: 1.05 },
-  "RC0805FR-0710KL": { onHand: 25000, reserved: 2000, threshold: 2000, location: "Reel Rack 1", cost: 0.007 },
+  "RC0805FR-0710KL": { onHand: 0, reserved: 0, threshold: 2000, location: "Reel Rack 1", cost: 0.007 },
   "CRCW080510K0FKEA": { onHand: 15000, reserved: 0, threshold: 1000, location: "Reel Rack 1", cost: 0.009 },
-  "RC0805FR-071KL": { onHand: 20000, reserved: 1000, threshold: 1000, location: "Reel Rack 2", cost: 0.007 },
-  "RC0805FR-07220RL": { onHand: 18000, reserved: 0, threshold: 1000, location: "Reel Rack 2", cost: 0.007 },
-  "RC0805FR-074K7L": { onHand: 15000, reserved: 0, threshold: 1000, location: "Reel Rack 3", cost: 0.008 },
-  "CL21B106KOQNNNE": { onHand: 12000, reserved: 1000, threshold: 1000, location: "Reel Rack 4", cost: 0.018 },
-  "GRM21BR71C106KE51L": { onHand: 8000, reserved: 0, threshold: 1000, location: "Reel Rack 4", cost: 0.022 },
-  "CC0805KRX7R9BB104": { onHand: 30000, reserved: 5000, threshold: 2500, location: "Reel Rack 5", cost: 0.005 },
-  "1N4007-TP": { onHand: 5000, reserved: 0, threshold: 500, location: "Bin Diode-1", cost: 0.035 },
-  "1N4148WS-7-F": { onHand: 8000, reserved: 0, threshold: 500, location: "Bin Diode-2", cost: 0.015 },
-  "150080RS75000": { onHand: 6000, reserved: 500, threshold: 500, location: "Reel LED-Red", cost: 0.045 },
-  "150080GS75000": { onHand: 5500, reserved: 0, threshold: 500, location: "Reel LED-Green", cost: 0.050 },
-  "150080BS75000": { onHand: 4000, reserved: 0, threshold: 500, location: "Reel LED-Blue", cost: 0.055 },
-  "AMS1117-3.3": { onHand: 2500, reserved: 200, threshold: 250, location: "Bin LDO-1", cost: 0.12 },
-  "LM7805CT": { onHand: 1200, reserved: 0, threshold: 100, location: "Bin LDO-2", cost: 0.35 },
-  "2N7002-7-F": { onHand: 7000, reserved: 500, threshold: 500, location: "Reel FET-1", cost: 0.028 },
-  "BME280": { onHand: 6, reserved: 0, threshold: 15, location: "Sensor Cabinet B-1", cost: 4.50 },
-  "BMP280": { onHand: 25, reserved: 0, threshold: 20, location: "Sensor Cabinet B-2", cost: 2.10 },
-  "DHT22": { onHand: 45, reserved: 0, threshold: 20, location: "Sensor Cabinet B-3", cost: 2.80 },
-  "HC-SR04": { onHand: 150, reserved: 10, threshold: 25, location: "Sensor Cabinet C-1", cost: 0.95 },
-  "HC-SR501": { onHand: 80, reserved: 0, threshold: 15, location: "Sensor Cabinet C-2", cost: 1.20 },
-  "DS18B20": { onHand: 200, reserved: 0, threshold: 30, location: "Sensor Cabinet C-3", cost: 0.85 },
   "SSD1306-0.96-OLED-I2C": { onHand: 0, reserved: 0, threshold: 20, location: "Display Cabinet D-1", cost: 2.20 },
-  "TYPE-C-31-M-12": { onHand: 3500, reserved: 200, threshold: 300, location: "Connector Bay 1", cost: 0.22 },
-  "61304011121": { onHand: 1800, reserved: 0, threshold: 200, location: "Connector Bay 2", cost: 0.15 },
-  "B3F-1000": { onHand: 4000, reserved: 0, threshold: 500, location: "Switch Bin 1", cost: 0.08 },
-  "CH340C": { onHand: 2200, reserved: 200, threshold: 200, location: "IC Tray 3", cost: 0.42 },
-  "SRD-05VDC-SL-C": { onHand: 650, reserved: 50, threshold: 50, location: "Relay Rack 1", cost: 0.65 },
 };
 
-export const seedDatabase = async () => {
-  console.log(`1. Seeding ${realWorldElectronicsCatalog.length} master components into items catalog...`);
+const suppliersSeed = [
+  {
+    name: "DigiKey Electronics",
+    code: "DIGIKEY",
+    contactEmail: "sales@digikey.com",
+    website: "https://www.digikey.com",
+    reliabilityScore: 98.5,
+    leadTimeDaysAverage: 2.0,
+    paymentTerms: "Net 30",
+    currency: "USD",
+  },
+  {
+    name: "Mouser Electronics",
+    code: "MOUSER",
+    contactEmail: "orders@mouser.com",
+    website: "https://www.mouser.com",
+    reliabilityScore: 97.0,
+    leadTimeDaysAverage: 3.0,
+    paymentTerms: "Net 30",
+    currency: "USD",
+  },
+  {
+    name: "LCSC Electronics",
+    code: "LCSC",
+    contactEmail: "support@lcsc.com",
+    website: "https://www.lcsc.com",
+    reliabilityScore: 92.0,
+    leadTimeDaysAverage: 7.0,
+    paymentTerms: "Prepaid",
+    currency: "USD",
+  },
+];
 
+export const seedDatabase = async () => {
+  console.log("1. Seeding master components...");
   for (const item of realWorldElectronicsCatalog) {
     await db
       .insert(itemsTable)
@@ -722,12 +179,9 @@ export const seedDatabase = async () => {
       });
   }
 
-  console.log("2. Seeding warehouse stock levels into inventory table...");
-
+  console.log("2. Seeding warehouse inventory...");
   const allItems = await db.select().from(itemsTable);
   const itemMap = new Map(allItems.map((i) => [i.partNumber, i.id]));
-
-  let inventoryCount = 0;
 
   for (const [partNumber, profile] of Object.entries(inventorySeedProfiles)) {
     const itemId = itemMap.get(partNumber);
@@ -754,11 +208,59 @@ export const seedDatabase = async () => {
           updatedAt: new Date(),
         },
       });
-
-    inventoryCount++;
   }
 
-  console.log(`✅ Successfully seeded ${realWorldElectronicsCatalog.length} master items & ${inventoryCount} warehouse inventory records!`);
+  console.log("3. Seeding suppliers and catalog quotes...");
+  for (const s of suppliersSeed) {
+    const [supplier] = await db
+      .insert(suppliersTable)
+      .values(s)
+      .onConflictDoUpdate({
+        target: suppliersTable.code,
+        set: {
+          name: s.name,
+          reliabilityScore: s.reliabilityScore,
+          leadTimeDaysAverage: s.leadTimeDaysAverage,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    const oledItemId = itemMap.get("SSD1306-0.96-OLED-I2C");
+    if (oledItemId && supplier) {
+      const price = supplier.code === "LCSC" ? 1.85 : supplier.code === "DIGIKEY" ? 2.10 : 2.35;
+      const leadTime = supplier.code === "DIGIKEY" ? 2.0 : supplier.code === "MOUSER" ? 3.0 : 7.0;
+
+      await db
+        .insert(supplierItemsTable)
+        .values({
+          supplierId: supplier.id,
+          itemId: oledItemId,
+          supplierPartNumber: `${supplier.code}-OLED-096-I2C`,
+          unitPrice: price,
+          minimumOrderQuantity: supplier.code === "LCSC" ? 10 : 1,
+          stockAvailable: 50000,
+          leadTimeDays: leadTime,
+          priceTiers: [
+            { minQuantity: 1, unitPrice: price },
+            { minQuantity: 50, unitPrice: price * 0.9 },
+            { minQuantity: 500, unitPrice: price * 0.8 },
+          ],
+          isPreferred: supplier.code === "DIGIKEY",
+        })
+        .onConflictDoUpdate({
+          target: [supplierItemsTable.supplierId, supplierItemsTable.itemId],
+          set: {
+            unitPrice: price,
+            stockAvailable: 50000,
+            leadTimeDays: leadTime,
+            updatedAt: new Date(),
+          },
+        });
+    }
+  }
+
+  console.log("✅ Seed complete!");
 };
 
 seedDatabase()

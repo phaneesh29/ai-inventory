@@ -1,8 +1,4 @@
-import { ToolLoopAgent } from "ai";
-import { mistral } from "@ai-sdk/mistral";
-import { PROCESS_EXECUTION_INSTRUCTIONS } from "./processExecution.instructions.js";
 import {
-  createProcessExecutionTools,
   reserveStockInDB,
   applySubstitutionsInDB,
   StockReservationItem,
@@ -64,20 +60,6 @@ export const generateProcessExecutionPlan = async (
   params: GenerateProcessPlanParams
 ): Promise<ProcessPlanProposal> => {
   const { bom, audit, alternatives } = params;
-  const tools = createProcessExecutionTools();
-
-  const agent = new ToolLoopAgent({
-    model: mistral("mistral-medium-latest"),
-    instructions: PROCESS_EXECUTION_INSTRUCTIONS,
-    tools: {
-      reserveWarehouseStock: tools.reserveWarehouseStock,
-      applyComponentSubstitutions: tools.applyComponentSubstitutions,
-    },
-    toolApproval: {
-      reserveWarehouseStock: "user-approval",
-      applyComponentSubstitutions: "user-approval",
-    },
-  });
 
   const componentChanges: ComponentChangeProposal[] = [];
   const stockReservations: StockReservationProposal[] = [];
@@ -131,26 +113,37 @@ export const generateProcessExecutionPlan = async (
     }
   }
 
-  const promptSummary = `Generate the final user-approval production release plan:
-BOM: ${bom.name} (${bom.version})
-BOM ID: ${bom.id}
-In-Stock Items: ${audit.inStockLineItems}/${audit.totalLineItems}
-Component Changes from Comparison Agent (${componentChanges.length}):
-${componentChanges
-  .map(
-    (c) =>
-      `• [${c.substitutionTier}] ${c.originalPartNumber} -> ${c.replacementPartNumber} (${c.circuitTopology}) | Reason: ${c.engineeringReason} | Risk: ${c.riskLevel}`
-  )
-  .join("\n")}
+  const changeLines =
+    componentChanges.length > 0
+      ? componentChanges
+          .map(
+            (c) =>
+              `- **[${c.substitutionTier}]** ${c.originalPartNumber} (${c.originalName}) ➔ **${c.replacementPartNumber}** (${c.replacementName}) | Topology: ${c.circuitTopology} | Reason: ${c.engineeringReason} (Risk: ${c.riskLevel})`
+          )
+          .join("\n")
+      : "No component substitutions required. All components available as originally specified.";
 
-Stock Reservations (${stockReservations.length}):
-${stockReservations.map((r) => `• ${r.partNumber}: Reserve ${r.quantityToReserve} units at ${r.location}`).join("\n")}
+  const reservationLines = stockReservations
+    .map((r) => `- **${r.partNumber}**: Reserve **${r.quantityToReserve} units** at \`${r.location}\``)
+    .join("\n");
 
-Summarize the production release package and request explicit user confirmation to execute.`;
+  const summary = `### **Production Release & Process Execution Plan**
+**BOM ID:** \`${bom.id}\`
+**BOM Name:** ${bom.name} (${bom.version})
+**Status:** **APPROVAL_REQUIRED (Awaiting User Confirmation)**
 
-  const agentResponse = await agent.generate({
-    prompt: promptSummary,
-  });
+---
+
+#### **🔄 Component Changed List (${componentChanges.length} substitutions):**
+${changeLines}
+
+---
+
+#### **📦 Warehouse Stock Reservations (${stockReservations.length} items):**
+${reservationLines}
+
+---
+*Please review the proposed component changes and confirm approval to execute warehouse reservations and BOM updates.*`;
 
   return {
     bomId: bom.id,
@@ -162,7 +155,7 @@ Summarize the production release package and request explicit user confirmation 
     totalComponentChanges: componentChanges.length,
     componentChanges,
     stockReservations,
-    agentSummary: agentResponse.text || "Production release plan formulated and awaiting user approval.",
+    agentSummary: summary,
   };
 };
 
