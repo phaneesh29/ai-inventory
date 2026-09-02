@@ -278,6 +278,7 @@ export default function PurchaseOrdersPage() {
       });
 
       setReceiveResult(res);
+      setIsReceivingPO(false);
       toast.success(
         "Dock Receiving Complete",
         `Received ${res.inventoryStockUpdates.length} items into ${receiveLocation}.`
@@ -468,18 +469,6 @@ export default function PurchaseOrdersPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeletingPO(po);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded-md transition-all"
-                        title="Delete Purchase Order"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-
                       <span className="text-[#828fff] text-xs font-medium group-hover:underline flex items-center gap-1">
                         <span>Inspect</span>
                         <ArrowRight className="h-3.5 w-3.5" />
