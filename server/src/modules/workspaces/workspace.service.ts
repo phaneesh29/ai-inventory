@@ -7,7 +7,6 @@ export const findAllWorkspaces = async (
   query: ListWorkspacesQuery
 ): Promise<{ workspaces: Workspace[]; total: number }> => {
   const { limit, offset, search } = query;
-
   const whereClause = search ? ilike(workspacesTable.name, `%${search}%`) : undefined;
 
   const [workspaces, totalResult] = await Promise.all([
@@ -77,9 +76,7 @@ export const deleteWorkspace = async (
   id: string
 ): Promise<{ id: string; deleted: boolean }> => {
   await findWorkspaceById(id);
-
   await db.delete(workspacesTable).where(eq(workspacesTable.id, id));
 
   return { id, deleted: true };
 };
-

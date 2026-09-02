@@ -33,4 +33,3 @@ export const deleteWorkspace = async (req: Request, res: Response): Promise<Resp
   const result = await workspaceService.deleteWorkspace(id);
   return sendSuccess(res, result, "Workspace deleted successfully");
 };
-
