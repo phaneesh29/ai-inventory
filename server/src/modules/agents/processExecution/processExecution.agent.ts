@@ -4,9 +4,15 @@ import {
   StockReservationItem,
   ComponentSubstitutionItem,
 } from "./processExecution.tools.js";
+import {
+  commitPurchaseOrdersToDB,
+  DraftPurchaseOrder,
+  CommittedPurchaseOrder,
+} from "../purchaseOrderPlanner/purchaseOrderPlanner.tools.js";
 import type { EnrichedBOM } from "../../boms/bom.service.js";
 import type { InventoryAuditResult } from "../inventoryAudit/inventoryAudit.agent.js";
 import type { AlternativeMatchResult } from "../alternativeMatcher/alternativeMatcher.agent.js";
+import type { PurchaseOrderPlannerResult } from "../purchaseOrderPlanner/purchaseOrderPlanner.agent.js";
 
 export interface ComponentChangeProposal {
   originalItemId: string;
@@ -39,8 +45,11 @@ export interface ProcessPlanProposal {
   isSubstitutionRequired: boolean;
   totalComponentsToReserve: number;
   totalComponentChanges: number;
+  totalDraftPurchaseOrders: number;
+  totalEstimatedProcurementSpendUSD: number;
   componentChanges: ComponentChangeProposal[];
   stockReservations: StockReservationProposal[];
+  draftPurchaseOrders: DraftPurchaseOrder[];
   agentSummary: string;
 }
 
@@ -48,18 +57,20 @@ export interface GenerateProcessPlanParams {
   bom: EnrichedBOM;
   audit: InventoryAuditResult;
   alternatives: AlternativeMatchResult | null;
+  poPlan: PurchaseOrderPlannerResult | null;
 }
 
 export interface ExecuteApprovedPlanParams {
   bomId: string;
   reservations: StockReservationItem[];
   substitutions: ComponentSubstitutionItem[];
+  purchaseOrders: DraftPurchaseOrder[];
 }
 
 export const generateProcessExecutionPlan = async (
   params: GenerateProcessPlanParams
 ): Promise<ProcessPlanProposal> => {
-  const { bom, audit, alternatives } = params;
+  const { bom, audit, alternatives, poPlan } = params;
 
   const componentChanges: ComponentChangeProposal[] = [];
   const stockReservations: StockReservationProposal[] = [];
@@ -113,6 +124,9 @@ export const generateProcessExecutionPlan = async (
     }
   }
 
+  const draftPOs = poPlan?.draftPurchaseOrders || [];
+  const totalPOSpend = poPlan?.totalEstimatedSpendUSD || 0;
+
   const changeLines =
     componentChanges.length > 0
       ? componentChanges
@@ -121,20 +135,33 @@ export const generateProcessExecutionPlan = async (
               `- **[${c.substitutionTier}]** ${c.originalPartNumber} (${c.originalName}) ➔ **${c.replacementPartNumber}** (${c.replacementName}) | Topology: ${c.circuitTopology} | Reason: ${c.engineeringReason} (Risk: ${c.riskLevel})`
           )
           .join("\n")
-      : "No component substitutions required. All components available as originally specified.";
+      : "No component substitutions required.";
 
-  const reservationLines = stockReservations
-    .map((r) => `- **${r.partNumber}**: Reserve **${r.quantityToReserve} units** at \`${r.location}\``)
-    .join("\n");
+  const reservationLines =
+    stockReservations.length > 0
+      ? stockReservations
+          .map((r) => `- **${r.partNumber}**: Reserve **${r.quantityToReserve} units** at \`${r.location}\``)
+          .join("\n")
+      : "No warehouse stock reservations required.";
 
-  const summary = `### **Production Release & Process Execution Plan**
+  const poLines =
+    draftPOs.length > 0
+      ? draftPOs
+          .map(
+            (po) =>
+              `- **${po.supplierName}** (\`${po.supplierCode}\`): Total **$${po.totalAmount.toFixed(2)} USD** (${po.items.length} items, Lead Time: ~${po.estimatedLeadTimeDays} days, Status: \`${po.status}\`)`
+          )
+          .join("\n")
+      : "No external purchase orders required.";
+
+  const summary = `### **Production Release & Procurement Plan (Awaiting User Approval)**
 **BOM ID:** \`${bom.id}\`
 **BOM Name:** ${bom.name} (${bom.version})
 **Status:** **APPROVAL_REQUIRED (Awaiting User Confirmation)**
 
 ---
 
-#### **🔄 Component Changed List (${componentChanges.length} substitutions):**
+#### **🔄 In-House Component Substitutions (${componentChanges.length} changes):**
 ${changeLines}
 
 ---
@@ -143,7 +170,12 @@ ${changeLines}
 ${reservationLines}
 
 ---
-*Please review the proposed component changes and confirm approval to execute warehouse reservations and BOM updates.*`;
+
+#### **📄 Drafted Supplier Purchase Orders (${draftPOs.length} POs, Est. Spend: $${totalPOSpend.toFixed(2)} USD):**
+${poLines}
+
+---
+*Please review and confirm to approve stock reservations, apply component swaps, and issue supplier purchase orders.*`;
 
   return {
     bomId: bom.id,
@@ -153,8 +185,11 @@ ${reservationLines}
     isSubstitutionRequired: componentChanges.length > 0,
     totalComponentsToReserve: stockReservations.length,
     totalComponentChanges: componentChanges.length,
+    totalDraftPurchaseOrders: draftPOs.length,
+    totalEstimatedProcurementSpendUSD: totalPOSpend,
     componentChanges,
     stockReservations,
+    draftPurchaseOrders: draftPOs,
     agentSummary: summary,
   };
 };
@@ -162,6 +197,7 @@ ${reservationLines}
 export const executeApprovedProcessPlan = async (params: ExecuteApprovedPlanParams) => {
   let reservationsResult = null;
   let substitutionsResult = null;
+  let purchaseOrdersResult: CommittedPurchaseOrder[] = [];
 
   if (params.substitutions.length > 0) {
     substitutionsResult = await applySubstitutionsInDB(params.substitutions);
@@ -171,10 +207,15 @@ export const executeApprovedProcessPlan = async (params: ExecuteApprovedPlanPara
     reservationsResult = await reserveStockInDB(params.reservations);
   }
 
+  if (params.purchaseOrders && params.purchaseOrders.length > 0) {
+    purchaseOrdersResult = await commitPurchaseOrdersToDB(params.purchaseOrders);
+  }
+
   return {
     bomId: params.bomId,
     status: "APPROVED_AND_EXECUTED",
     substitutionsApplied: substitutionsResult,
     stockReservationsApplied: reservationsResult,
+    purchaseOrdersIssued: purchaseOrdersResult,
   };
 };

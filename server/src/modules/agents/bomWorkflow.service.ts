@@ -2,11 +2,15 @@ import { parseUploadedBOMFile } from "../boms/bom.parser.js";
 import { runBOMIngestionAgent, BOMIngestionResult } from "./bomIngestion/bomIngestion.agent.js";
 import { runInventoryAuditAgent, InventoryAuditResult } from "./inventoryAudit/inventoryAudit.agent.js";
 import { runAlternativeMatcherAgent, AlternativeMatchResult } from "./alternativeMatcher/alternativeMatcher.agent.js";
-import { runSupplierOptimizerAgent, SupplierOptimizerResult } from "./supplierOptimizer/supplierOptimizer.agent.js";
+import { runSupplierDiscoveryAgent, SupplierDiscoveryResult } from "./supplierDiscovery/supplierDiscovery.agent.js";
+import { runPurchaseOrderPlannerAgent, PurchaseOrderPlannerResult } from "./purchaseOrderPlanner/purchaseOrderPlanner.agent.js";
 import {
   generateProcessExecutionPlan,
+  executeApprovedProcessPlan,
   ProcessPlanProposal,
+  ExecuteApprovedPlanParams,
 } from "./processExecution/processExecution.agent.js";
+import * as bomService from "../boms/bom.service.js";
 import { InternalServerError } from "../../utils/errors.js";
 import type { EnrichedBOM } from "../boms/bom.service.js";
 
@@ -23,7 +27,8 @@ export interface BOMWorkflowResult {
   bom: EnrichedBOM;
   audit: InventoryAuditResult;
   alternatives: AlternativeMatchResult | null;
-  supplierOrders: SupplierOptimizerResult | null;
+  supplierDiscovery: SupplierDiscoveryResult | null;
+  purchaseOrderPlan: PurchaseOrderPlannerResult | null;
   processPlan: ProcessPlanProposal;
   workflowStage: "ALL_IN_STOCK_EXECUTION" | "IN_HOUSE_SUBSTITUTIONS" | "SUPPLIER_PURCHASE_ORDER";
   bomAgentSummary: string;
@@ -62,7 +67,8 @@ export const runBOMUploadAndAuditWorkflow = async (
   });
 
   let alternativesResult: AlternativeMatchResult | null = null;
-  let supplierOrdersResult: SupplierOptimizerResult | null = null;
+  let supplierDiscoveryResult: SupplierDiscoveryResult | null = null;
+  let purchaseOrderPlanResult: PurchaseOrderPlannerResult | null = null;
   let workflowStage: "ALL_IN_STOCK_EXECUTION" | "IN_HOUSE_SUBSTITUTIONS" | "SUPPLIER_PURCHASE_ORDER" =
     "ALL_IN_STOCK_EXECUTION";
 
@@ -99,14 +105,19 @@ export const runBOMUploadAndAuditWorkflow = async (
 
     if (unresolvableDeficits.length > 0) {
       workflowStage = "SUPPLIER_PURCHASE_ORDER";
-      supplierOrdersResult = await runSupplierOptimizerAgent({
-        unresolvedDeficits: unresolvableDeficits.map((d) => ({
+
+      supplierDiscoveryResult = await runSupplierDiscoveryAgent({
+        deficitItems: unresolvableDeficits.map((d) => ({
           itemId: d.itemId,
           partNumber: d.partNumber,
           name: d.name,
           category: d.category,
           deficitQuantity: d.deficitQuantity,
         })),
+      });
+
+      purchaseOrderPlanResult = await runPurchaseOrderPlannerAgent({
+        marketData: supplierDiscoveryResult.marketData,
       });
     } else {
       workflowStage = "IN_HOUSE_SUBSTITUTIONS";
@@ -117,15 +128,27 @@ export const runBOMUploadAndAuditWorkflow = async (
     bom: ingestionResult.bom,
     audit: auditResult,
     alternatives: alternativesResult,
+    poPlan: purchaseOrderPlanResult,
   });
 
   return {
     bom: ingestionResult.bom,
     audit: auditResult,
     alternatives: alternativesResult,
-    supplierOrders: supplierOrdersResult,
+    supplierDiscovery: supplierDiscoveryResult,
+    purchaseOrderPlan: purchaseOrderPlanResult,
     processPlan,
     workflowStage,
     bomAgentSummary: ingestionResult.agentSummary,
+  };
+};
+
+export const approveBOMProcessWorkflow = async (params: ExecuteApprovedPlanParams) => {
+  const executionResult = await executeApprovedProcessPlan(params);
+  const updatedBOM = await bomService.findBOMById(params.bomId);
+
+  return {
+    bom: updatedBOM,
+    executionResult,
   };
 };
