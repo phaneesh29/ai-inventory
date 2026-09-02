@@ -1,7 +1,14 @@
 import { eq, ilike, or, and, sql } from "drizzle-orm";
 import { db, inventoryTable, itemsTable } from "../../db/index.js";
 import { NotFoundError, BadRequestError } from "../../utils/errors.js";
-import type { AddInventoryItemInput, UpdateInventoryItemInput, InventoryQueryInput } from "./inventory.schema.js";
+import type {
+  AddInventoryItemInput,
+  UpdateInventoryItemInput,
+  AdjustStockInput,
+  AllocateStockInput,
+  ReleaseStockInput,
+  InventoryQueryInput,
+} from "./inventory.schema.js";
 
 export interface EnrichedInventoryItem {
   id: string;
@@ -19,6 +26,7 @@ export interface EnrichedInventoryItem {
   isLowStock: boolean;
   location: string;
   unitCost: number | null;
+  totalValuation: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +36,9 @@ const mapToEnrichedInventoryItem = (row: {
   items: typeof itemsTable.$inferSelect;
 }): EnrichedInventoryItem => {
   const quantityAvailable = row.inventory.quantityOnHand - row.inventory.quantityReserved;
+  const unitCost = row.inventory.unitCost || 0;
+  const totalValuation = Number((row.inventory.quantityOnHand * unitCost).toFixed(2));
+
   return {
     id: row.inventory.id,
     itemId: row.items.id,
@@ -44,6 +55,7 @@ const mapToEnrichedInventoryItem = (row: {
     isLowStock: quantityAvailable <= row.inventory.reorderThreshold,
     location: row.inventory.location,
     unitCost: row.inventory.unitCost,
+    totalValuation,
     createdAt: row.inventory.createdAt,
     updatedAt: row.inventory.updatedAt,
   };
@@ -121,6 +133,38 @@ export const findInventoryById = async (id: string): Promise<EnrichedInventoryIt
   return mapToEnrichedInventoryItem(row);
 };
 
+export const findLowStockAlerts = async (): Promise<{
+  alerts: Array<EnrichedInventoryItem & { deficit: number; recommendedReorder: number }>;
+  totalAlerts: number;
+}> => {
+  const rows = await db
+    .select({
+      inventory: inventoryTable,
+      items: itemsTable,
+    })
+    .from(inventoryTable)
+    .innerJoin(itemsTable, eq(inventoryTable.itemId, itemsTable.id))
+    .where(
+      sql`${inventoryTable.quantityOnHand} - ${inventoryTable.quantityReserved} <= ${inventoryTable.reorderThreshold}`
+    );
+
+  const enriched = rows.map((r) => {
+    const item = mapToEnrichedInventoryItem(r);
+    const deficit = Math.max(0, item.reorderThreshold - item.quantityAvailable);
+    const recommendedReorder = deficit > 0 ? deficit + item.reorderThreshold * 2 : item.reorderThreshold;
+    return {
+      ...item,
+      deficit,
+      recommendedReorder,
+    };
+  });
+
+  return {
+    alerts: enriched,
+    totalAlerts: enriched.length,
+  };
+};
+
 export const addInventoryItem = async (data: AddInventoryItemInput): Promise<EnrichedInventoryItem> => {
   let resolvedItemId = data.itemId;
 
@@ -192,6 +236,95 @@ export const addInventoryItem = async (data: AddInventoryItemInput): Promise<Enr
   }
 
   return findInventoryById(inventoryId);
+};
+
+export const adjustStock = async (data: AdjustStockInput): Promise<EnrichedInventoryItem> => {
+  const whereClause = data.id
+    ? eq(inventoryTable.id, data.id)
+    : eq(inventoryTable.itemId, data.itemId!);
+
+  const [existing] = await db.select().from(inventoryTable).where(whereClause);
+
+  if (!existing) {
+    throw new NotFoundError("Inventory record not found for adjustment");
+  }
+
+  const newOnHand = existing.quantityOnHand + data.delta;
+  if (newOnHand < 0) {
+    throw new BadRequestError(`Cannot reduce quantity below 0. Current on hand: ${existing.quantityOnHand}`);
+  }
+  if (newOnHand < existing.quantityReserved) {
+    throw new BadRequestError(
+      `New on-hand quantity (${newOnHand}) would be less than reserved quantity (${existing.quantityReserved})`
+    );
+  }
+
+  const [updated] = await db
+    .update(inventoryTable)
+    .set({
+      quantityOnHand: newOnHand,
+      location: data.location || existing.location,
+      updatedAt: new Date(),
+    })
+    .where(eq(inventoryTable.id, existing.id))
+    .returning();
+
+  return findInventoryById(updated.id);
+};
+
+export const allocateStock = async (data: AllocateStockInput): Promise<EnrichedInventoryItem> => {
+  const whereClause = data.id
+    ? eq(inventoryTable.id, data.id)
+    : eq(inventoryTable.itemId, data.itemId!);
+
+  const [existing] = await db.select().from(inventoryTable).where(whereClause);
+
+  if (!existing) {
+    throw new NotFoundError("Inventory record not found for allocation");
+  }
+
+  const available = existing.quantityOnHand - existing.quantityReserved;
+  if (data.quantity > available) {
+    throw new BadRequestError(
+      `Insufficient available stock for allocation. Requested: ${data.quantity}, Available: ${available} (On Hand: ${existing.quantityOnHand}, Already Reserved: ${existing.quantityReserved})`
+    );
+  }
+
+  const [updated] = await db
+    .update(inventoryTable)
+    .set({
+      quantityReserved: existing.quantityReserved + data.quantity,
+      updatedAt: new Date(),
+    })
+    .where(eq(inventoryTable.id, existing.id))
+    .returning();
+
+  return findInventoryById(updated.id);
+};
+
+export const releaseStock = async (data: ReleaseStockInput): Promise<EnrichedInventoryItem> => {
+  const whereClause = data.id
+    ? eq(inventoryTable.id, data.id)
+    : eq(inventoryTable.itemId, data.itemId!);
+
+  const [existing] = await db.select().from(inventoryTable).where(whereClause);
+
+  if (!existing) {
+    throw new NotFoundError("Inventory record not found for release");
+  }
+
+  const newReserved = Math.max(0, existing.quantityReserved - data.quantity);
+
+  const [updated] = await db
+    .update(inventoryTable)
+    .set({
+      quantityReserved: newReserved,
+      updatedAt: new Date(),
+    })
+    .where(eq(inventoryTable.id, existing.id))
+    .returning();
+
+  return findInventoryById(updated.id);
 };
 
 export const updateInventoryItem = async (
