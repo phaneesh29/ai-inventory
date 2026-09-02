@@ -41,6 +41,17 @@ export const fetchWorkspaces = async (): Promise<Workspace[]> => {
   return [];
 };
 
+export const fetchWorkspaceById = async (id: string): Promise<Workspace> => {
+  const res = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
+    cache: "no-store",
+  });
+  const json: ApiResponse<Workspace> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || `Failed to fetch workspace '${id}'`);
+  }
+  return json.data;
+};
+
 export const createWorkspace = async (name: string): Promise<Workspace> => {
   const res = await fetch(`${API_BASE_URL}/workspaces`, {
     method: "POST",

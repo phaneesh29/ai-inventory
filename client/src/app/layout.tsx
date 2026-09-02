@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { WorkspaceProvider } from "@/context/WorkspaceContext";
-import { Header } from "@/components/Header";
+import { GlobalSidebar } from "@/components/GlobalSidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,11 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-[#010102] text-[#f7f8f8] antialiased">
-        <WorkspaceProvider>
-          <Header />
+      <body className="min-h-screen bg-[#010102] text-[#f7f8f8] antialiased flex flex-col md:flex-row">
+        <GlobalSidebar />
+        <div className="flex-1 min-w-0 overflow-y-auto min-h-screen">
           {children}
-        </WorkspaceProvider>
+        </div>
       </body>
     </html>
   );
