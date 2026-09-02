@@ -1,4 +1,5 @@
-import { db, itemsTable } from "../src/db/index.js";
+import { db, itemsTable, inventoryTable } from "../src/db/index.js";
+import { eq } from "drizzle-orm";
 
 const realWorldElectronicsCatalog = [
   {
@@ -131,8 +132,6 @@ const realWorldElectronicsCatalog = [
       flashMemory: "32 KB",
       sram: "2 KB",
       eeprom: "1 KB",
-      gpioCount: 23,
-      adcChannels: 6,
       packageFootprint: "DIP-28",
       voltage: "1.8V - 5.5V",
     },
@@ -149,9 +148,6 @@ const realWorldElectronicsCatalog = [
       clockSpeed: "20 MHz",
       flashMemory: "32 KB",
       sram: "2 KB",
-      eeprom: "1 KB",
-      gpioCount: 23,
-      adcChannels: 8,
       packageFootprint: "TQFP-32 (7x7mm)",
       voltage: "1.8V - 5.5V",
     },
@@ -167,8 +163,6 @@ const realWorldElectronicsCatalog = [
       cores: "Dual ARM Cortex-M0+",
       clockSpeed: "133 MHz",
       sram: "264 KB",
-      pioBlocks: "2x PIO state machines (8 total)",
-      interfaces: "2x UART, 2x SPI, 2x I2C, 16x PWM, USB 1.1 Host/Device",
       packageFootprint: "QFN-56 (7x7mm)",
       voltage: "1.8V - 3.3V",
     },
@@ -201,7 +195,6 @@ const realWorldElectronicsCatalog = [
       powerRating: "0.125W (1/8W)",
       packageFootprint: "0805 (2012 Metric)",
       tempCoeff: "±100 ppm/°C",
-      qualification: "AEC-Q200",
     },
   },
   {
@@ -216,7 +209,6 @@ const realWorldElectronicsCatalog = [
       tolerance: "±5%",
       powerRating: "0.125W (1/8W)",
       packageFootprint: "0805 (2012 Metric)",
-      tempCoeff: "±200 ppm/°C",
     },
   },
   {
@@ -231,7 +223,6 @@ const realWorldElectronicsCatalog = [
       tolerance: "±1%",
       powerRating: "0.1W (1/10W)",
       packageFootprint: "0603 (1608 Metric)",
-      tempCoeff: "±100 ppm/°C",
     },
   },
   {
@@ -245,8 +236,7 @@ const realWorldElectronicsCatalog = [
       resistance: "10k Ohm",
       tolerance: "±1%",
       powerRating: "0.25W (1/4W)",
-      packageFootprint: "Axial Leaded (DO-41 size)",
-      tempCoeff: "±50 ppm/°C",
+      packageFootprint: "Axial Leaded",
     },
   },
   {
@@ -261,7 +251,6 @@ const realWorldElectronicsCatalog = [
       tolerance: "±1%",
       powerRating: "0.125W (1/8W)",
       packageFootprint: "0805 (2012 Metric)",
-      tempCoeff: "±100 ppm/°C",
     },
   },
   {
@@ -389,7 +378,6 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Micro Commercial Components (MCC)",
-      diodeType: "Standard Recovery Rectifier",
       forwardCurrent: "1A",
       peakReverseVoltage: "1000V",
       packageFootprint: "DO-41 Axial",
@@ -403,7 +391,6 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Diodes Incorporated",
-      diodeType: "High Speed Switching",
       reverseVoltage: "100V",
       forwardCurrent: "300mA",
       packageFootprint: "SOD-323",
@@ -417,7 +404,6 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Micro Commercial Components (MCC)",
-      diodeType: "Schottky Barrier",
       forwardCurrent: "1A",
       reverseVoltage: "40V",
       packageFootprint: "SOD-123",
@@ -476,7 +462,6 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Advanced Monolithic Systems",
-      regulatorType: "LDO Linear Voltage Regulator",
       outputVoltage: "3.3V Fixed",
       maxOutputCurrent: "1.0A",
       packageFootprint: "SOT-223",
@@ -516,7 +501,6 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Diodes Incorporated",
-      transistorType: "N-Channel MOSFET",
       drainSourceVoltage: "60V",
       continuousDrainCurrent: "115 mA",
       packageFootprint: "SOT-23-3",
@@ -530,11 +514,9 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Bosch Sensortec",
-      measuredParameters: "Temperature, Relative Humidity, Barometric Pressure",
-      humidityRange: "0% to 100% RH (±3%)",
-      pressureRange: "300 to 1100 hPa (±1 hPa)",
-      temperatureRange: "-40°C to 85°C (±0.5°C)",
-      interface: "I2C and SPI",
+      humidityRange: "0% to 100% RH",
+      pressureRange: "300 to 1100 hPa",
+      temperatureRange: "-40°C to 85°C",
       packageFootprint: "LGA-8 (2.5x2.5mm)",
     },
   },
@@ -546,10 +528,8 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Bosch Sensortec",
-      measuredParameters: "Barometric Pressure, Temperature",
       pressureRange: "300 to 1100 hPa",
       temperatureRange: "-40°C to 85°C",
-      interface: "I2C and SPI",
       packageFootprint: "LGA-8 (2.0x2.5mm)",
     },
   },
@@ -561,9 +541,8 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Aosong Electronics",
-      humidityRange: "0% - 99.9% RH (±2%)",
-      temperatureRange: "-40°C to 80°C (±0.5°C)",
-      interface: "Single-bus custom digital protocol",
+      humidityRange: "0% - 99.9% RH",
+      temperatureRange: "-40°C to 80°C",
       packageFootprint: "4-Pin Module",
     },
   },
@@ -576,10 +555,8 @@ const realWorldElectronicsCatalog = [
     specifications: {
       manufacturer: "ElecFreaks",
       range: "2cm to 400cm",
-      accuracy: "3mm",
       operatingVoltage: "5V DC",
-      triggerInput: "10uS TTL pulse",
-      packageFootprint: "Module with 2 Transducers (45x20mm)",
+      packageFootprint: "Module with 2 Transducers",
     },
   },
   {
@@ -589,11 +566,9 @@ const realWorldElectronicsCatalog = [
     category: "Sensor",
     unit: "pcs",
     specifications: {
-      sensorType: "Pyroelectric Infrared (PIR)",
-      detectionAngle: "<100 degrees cone",
       detectionRange: "Up to 7 meters",
       operatingVoltage: "4.5V - 20V DC",
-      packageFootprint: "PCB Module with Fresnel Lens (32x24mm)",
+      packageFootprint: "PCB Module with Lens",
     },
   },
   {
@@ -603,38 +578,9 @@ const realWorldElectronicsCatalog = [
     category: "Sensor",
     unit: "pcs",
     specifications: {
-      manufacturer: "Maxim Integrated / Analog Devices",
-      tempRange: "-55°C to 125°C (±0.5°C accuracy from -10°C to +85°C)",
-      interface: "1-Wire Serial Interface",
-      uniqueId: "Unique 64-bit Serial Code",
-      packageFootprint: "TO-92 Through-Hole",
-    },
-  },
-  {
-    partNumber: "MQ-2",
-    name: "Zhengzhou Winsen MQ-2 Gas & Smoke Detection Sensor",
-    description: "Winsen semiconductor gas sensor for detecting combustible gases, LPG, propane, methane, alcohol, and smoke.",
-    category: "Sensor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Zhengzhou Winsen Electronics",
-      targetGases: "LPG, i-butane, propane, methane, alcohol, hydrogen, smoke",
-      heaterVoltage: "5.0V ± 0.1V",
-      packageFootprint: "6-Pin Metal Cap Module",
-    },
-  },
-  {
-    partNumber: "RC522-RFID-MOD",
-    name: "NXP MFRC522 13.56MHz Contactless RFID Reader Module",
-    description: "NXP MFRC522 highly integrated reader/writer IC for 13.56MHz contactless communication with PCB antenna.",
-    category: "Sensor",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "NXP Semiconductors",
-      frequency: "13.56 MHz (ISO/IEC 14443 A/MIFARE)",
-      communicationInterface: "SPI (up to 10Mbit/s)",
-      operatingVoltage: "3.3V DC",
-      packageFootprint: "Module with PCB Antenna (40x60mm)",
+      manufacturer: "Maxim Integrated",
+      tempRange: "-55°C to 125°C",
+      packageFootprint: "TO-92",
     },
   },
   {
@@ -645,158 +591,9 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Solomon Systech",
-      displayType: "Monochrome OLED",
       resolution: "128 x 64 Pixels",
-      screenSize: "0.96 inch diagonal",
-      interface: "I2C (Address 0x3C or 0x3D)",
-      operatingVoltage: "3.3V - 5.0V",
-      packageFootprint: "4-Pin Breakout Module (27x27mm)",
-    },
-  },
-  {
-    partNumber: "ST7789V-1.3-IPS-SPI",
-    name: "Sitronix ST7789V 1.3 inch 240x240 Full-Color IPS LCD Display",
-    description: "1.3-inch 240x240 RGB high-resolution IPS display with ST7789V controller and 4-wire SPI interface.",
-    category: "Other",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Sitronix",
-      displayType: "IPS Full Color LCD (65K Colors)",
-      resolution: "240 x 240 Pixels",
-      interface: "4-Wire SPI",
-      operatingVoltage: "3.3V DC",
-      packageFootprint: "7-Pin Breakout Module",
-    },
-  },
-  {
-    partNumber: "NRF24L01P-MOD",
-    name: "Nordic Semi nRF24L01+ 2.4GHz Wireless RF Transceiver Module",
-    description: "Nordic Semiconductor ultra-low-power 2.4GHz ISM band wireless transceiver module with on-board PCB antenna.",
-    category: "Other",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Nordic Semiconductor",
-      frequencyBand: "2.4 GHz to 2.5 GHz ISM",
-      dataRate: "250 kbps, 1 Mbps, 2 Mbps",
-      operatingVoltage: "1.9V - 3.6V (5V tolerant logic)",
-      interface: "SPI (up to 10 Mbps)",
-      packageFootprint: "8-Pin 2x4 Header (15x29mm)",
-    },
-  },
-  {
-    partNumber: "SX1278-LORA-433M",
-    name: "Semtech SX1278 433MHz Long Range LoRa Wireless Transceiver",
-    description: "Semtech SX1278 LoRa spread spectrum wireless RF communication transceiver module with SPI interface.",
-    category: "Other",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Semtech",
-      frequency: "433 MHz (410 - 525 MHz)",
-      modulation: "LoRa / FSK / GFSK / OOK",
-      sensitivity: "Up to -148 dBm",
-      range: "Up to 5 km (Line of sight)",
-      packageFootprint: "SMD-16 (16x16mm)",
-    },
-  },
-  {
-    partNumber: "L298N-MOD",
-    name: "STMicroelectronics L298N Dual Full-Bridge Motor Driver Module",
-    description: "STMicroelectronics dual H-bridge motor driver module capable of driving two DC motors or one 4-wire stepper motor up to 2A per channel.",
-    category: "Other",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "STMicroelectronics",
-      driverType: "Dual H-Bridge Driver",
-      peakCurrent: "2A per Bridge (3A non-repetitive)",
-      operatingVoltage: "5V - 35V DC",
-      packageFootprint: "Heatsink Module (43x43mm)",
-    },
-  },
-  {
-    partNumber: "A4988-MOD",
-    name: "Allegro A4988 Microstepping Stepper Motor Driver Module",
-    description: "Allegro A4988 DMOS microstepping driver with built-in translator and overcurrent protection for 3D printers and CNC machines.",
-    category: "Other",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Allegro MicroSystems",
-      microstepResolution: "Full, 1/2, 1/4, 1/8, 1/16 step",
-      outputCurrent: "Up to 2A with heatsink",
-      operatingVoltage: "8V - 35V DC",
-      packageFootprint: "Pololu-style 16-Pin Carrier (15x20mm)",
-    },
-  },
-  {
-    partNumber: "SG90-SERVO",
-    name: "TowerPro SG90 9g Micro Analog Servo Motor 180°",
-    description: "TowerPro lightweight 9g micro servo motor with nylon gears and 180 degree rotation for robotics and RC models.",
-    category: "Other",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "TowerPro",
-      stallTorque: "1.8 kg-cm @ 4.8V",
-      operatingSpeed: "0.10 sec/60 degrees",
-      operatingVoltage: "4.8V - 6.0V DC",
-      weight: "9 grams",
-      packageFootprint: "Plastic Body (22.2x11.8x31mm)",
-    },
-  },
-  {
-    partNumber: "TP4056-TYPE-C",
-    name: "NanJing Top Power TP4056 1A Li-Ion Battery Charger with Protection",
-    description: "Complete constant-current/constant-voltage linear charger for single cell lithium-ion batteries with Type-C input and DW01A protection.",
-    category: "IC",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "NanJing Top Power ASIC Corp",
-      chargeCurrent: "1.0A Programmable",
-      fullChargeVoltage: "4.2V ± 1%",
-      inputConnector: "USB Type-C",
-      batteryProtection: "DW01A + FS8205A Dual MOSFET (Over-discharge & Over-current)",
-      packageFootprint: "Module (17x28mm)",
-    },
-  },
-  {
-    partNumber: "LM2596S-ADJ-MOD",
-    name: "Texas Instruments LM2596S 3A Step-Down Buck Converter Module",
-    description: "TI LM2596 simple switcher 150kHz 3A step-down voltage regulator module with multi-turn potentiometer adjustment.",
-    category: "IC",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Texas Instruments",
-      inputVoltage: "4.0V - 40V DC",
-      outputVoltage: "1.25V - 37V DC (Adjustable)",
-      maxCurrent: "3.0A (with heatsink)",
-      switchingFrequency: "150 kHz",
-      packageFootprint: "Buck Module (43x21mm)",
-    },
-  },
-  {
-    partNumber: "DS3231SN",
-    name: "Maxim DS3231 High-Precision RTC with Integrated TCXO",
-    description: "Maxim Integrated extremely accurate I2C real-time clock (RTC) with integrated temperature-compensated crystal oscillator (TCXO) in SO-16.",
-    category: "IC",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Maxim Integrated / Analog Devices",
-      accuracy: "±2ppm from 0°C to +40°C (approx ±1 min/year)",
-      batteryBackup: "Automatic switchover to coin cell CR2032",
-      interface: "I2C (400kHz)",
-      packageFootprint: "SO-16 (300mil)",
-    },
-  },
-  {
-    partNumber: "W25Q64JVSSIQ",
-    name: "Winbond 64Mb (8MB) Serial NOR Flash Memory SPI 133MHz",
-    description: "Winbond 64M-bit serial flash memory with dual/quad SPI in standard 8-pin SOIC 208mil package.",
-    category: "IC",
-    unit: "pcs",
-    specifications: {
-      manufacturer: "Winbond Electronics",
-      capacity: "64 Mbit (8 MByte)",
-      clockFrequency: "133 MHz (Quad-SPI up to 532 MHz equivalent)",
-      voltage: "2.7V - 3.6V",
-      packageFootprint: "SOIC-8 (208mil)",
+      interface: "I2C (0x3C)",
+      packageFootprint: "4-Pin Breakout Module",
     },
   },
   {
@@ -807,11 +604,8 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Korean Hroparts Electronics",
-      connectorType: "USB Type-C Female Receptacle",
       pinCount: 16,
       currentRating: "3.0A",
-      voltageRating: "20V DC",
-      matingCycles: "10,000 Cycles",
       packageFootprint: "Hybrid SMD + 4 THT Shell Posts",
     },
   },
@@ -823,10 +617,8 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Würth Elektronik",
-      pitch: "2.54 mm (0.1 inch)",
+      pitch: "2.54 mm",
       numberOfPositions: 40,
-      contactPlating: "Gold Plated",
-      currentRating: "3.0A",
       packageFootprint: "Through-Hole Vertical",
     },
   },
@@ -838,11 +630,8 @@ const realWorldElectronicsCatalog = [
     unit: "pcs",
     specifications: {
       manufacturer: "Omron Electronics",
-      switchFunction: "Momentary SPST-NO",
-      operatingForce: "0.98 N (100 gf)",
       contactRating: "50 mA @ 24V DC",
-      mechanicalLife: "1,000,000 Operations",
-      packageFootprint: "Through-Hole 4-Pin (6.0x6.0mm)",
+      packageFootprint: "Through-Hole 4-Pin",
     },
   },
   {
@@ -852,11 +641,9 @@ const realWorldElectronicsCatalog = [
     category: "IC",
     unit: "pcs",
     specifications: {
-      manufacturer: "WCH (Jiangsu Qinheng Microelectronics)",
-      function: "USB 2.0 Full-Speed to UART Serial Bridge",
-      clockSource: "Internal Oscillator (No external crystal needed)",
-      baudRate: "50 bps to 2 Mbps",
-      packageFootprint: "SOP-16 (150mil)",
+      manufacturer: "WCH",
+      function: "USB 2.0 to UART Serial Bridge",
+      packageFootprint: "SOP-16",
     },
   },
   {
@@ -868,15 +655,55 @@ const realWorldElectronicsCatalog = [
     specifications: {
       manufacturer: "Songle Relay",
       coilVoltage: "5V DC",
-      contactForm: "1 Form C (SPDT: 1 NO, 1 NC)",
-      contactRating: "10A 250VAC / 10A 30VDC",
-      packageFootprint: "PCB 5-Pin Through-Hole (19x15.5x15.5mm)",
+      contactRating: "10A 250VAC",
+      packageFootprint: "PCB 5-Pin Through-Hole",
     },
   },
 ];
 
+const inventorySeedProfiles: Record<
+  string,
+  { onHand: number; reserved: number; threshold: number; location: string; cost: number }
+> = {
+  "ESP32-WROOM-32E-N4": { onHand: 850, reserved: 50, threshold: 100, location: "Warehouse Shelf A-1", cost: 2.85 },
+  "ESP32-WROOM-32E-N8": { onHand: 400, reserved: 0, threshold: 50, location: "Warehouse Shelf A-2", cost: 3.20 },
+  "ESP32-S3-WROOM-1-N8R8": { onHand: 250, reserved: 0, threshold: 40, location: "Warehouse Shelf A-3", cost: 4.50 },
+  "STM32F103C8T6": { onHand: 600, reserved: 100, threshold: 50, location: "Warehouse Shelf B-1", cost: 2.40 },
+  "STM32F401RET6": { onHand: 350, reserved: 0, threshold: 50, location: "Warehouse Shelf B-2", cost: 3.80 },
+  "ATMEGA328P-PU": { onHand: 500, reserved: 0, threshold: 50, location: "Warehouse Shelf B-3", cost: 1.95 },
+  "RP2040": { onHand: 1200, reserved: 200, threshold: 100, location: "Warehouse Shelf B-4", cost: 1.05 },
+  "RC0805FR-0710KL": { onHand: 25000, reserved: 2000, threshold: 2000, location: "Reel Rack 1", cost: 0.007 },
+  "CRCW080510K0FKEA": { onHand: 15000, reserved: 0, threshold: 1000, location: "Reel Rack 1", cost: 0.009 },
+  "RC0805FR-071KL": { onHand: 20000, reserved: 1000, threshold: 1000, location: "Reel Rack 2", cost: 0.007 },
+  "RC0805FR-07220RL": { onHand: 18000, reserved: 0, threshold: 1000, location: "Reel Rack 2", cost: 0.007 },
+  "RC0805FR-074K7L": { onHand: 15000, reserved: 0, threshold: 1000, location: "Reel Rack 3", cost: 0.008 },
+  "CL21B106KOQNNNE": { onHand: 12000, reserved: 1000, threshold: 1000, location: "Reel Rack 4", cost: 0.018 },
+  "GRM21BR71C106KE51L": { onHand: 8000, reserved: 0, threshold: 1000, location: "Reel Rack 4", cost: 0.022 },
+  "CC0805KRX7R9BB104": { onHand: 30000, reserved: 5000, threshold: 2500, location: "Reel Rack 5", cost: 0.005 },
+  "1N4007-TP": { onHand: 5000, reserved: 0, threshold: 500, location: "Bin Diode-1", cost: 0.035 },
+  "1N4148WS-7-F": { onHand: 8000, reserved: 0, threshold: 500, location: "Bin Diode-2", cost: 0.015 },
+  "150080RS75000": { onHand: 6000, reserved: 500, threshold: 500, location: "Reel LED-Red", cost: 0.045 },
+  "150080GS75000": { onHand: 5500, reserved: 0, threshold: 500, location: "Reel LED-Green", cost: 0.050 },
+  "150080BS75000": { onHand: 4000, reserved: 0, threshold: 500, location: "Reel LED-Blue", cost: 0.055 },
+  "AMS1117-3.3": { onHand: 2500, reserved: 200, threshold: 250, location: "Bin LDO-1", cost: 0.12 },
+  "LM7805CT": { onHand: 1200, reserved: 0, threshold: 100, location: "Bin LDO-2", cost: 0.35 },
+  "2N7002-7-F": { onHand: 7000, reserved: 500, threshold: 500, location: "Reel FET-1", cost: 0.028 },
+  "BME280": { onHand: 6, reserved: 0, threshold: 15, location: "Sensor Cabinet B-1", cost: 4.50 },
+  "BMP280": { onHand: 25, reserved: 0, threshold: 20, location: "Sensor Cabinet B-2", cost: 2.10 },
+  "DHT22": { onHand: 45, reserved: 0, threshold: 20, location: "Sensor Cabinet B-3", cost: 2.80 },
+  "HC-SR04": { onHand: 150, reserved: 10, threshold: 25, location: "Sensor Cabinet C-1", cost: 0.95 },
+  "HC-SR501": { onHand: 80, reserved: 0, threshold: 15, location: "Sensor Cabinet C-2", cost: 1.20 },
+  "DS18B20": { onHand: 200, reserved: 0, threshold: 30, location: "Sensor Cabinet C-3", cost: 0.85 },
+  "SSD1306-0.96-OLED-I2C": { onHand: 0, reserved: 0, threshold: 20, location: "Display Cabinet D-1", cost: 2.20 },
+  "TYPE-C-31-M-12": { onHand: 3500, reserved: 200, threshold: 300, location: "Connector Bay 1", cost: 0.22 },
+  "61304011121": { onHand: 1800, reserved: 0, threshold: 200, location: "Connector Bay 2", cost: 0.15 },
+  "B3F-1000": { onHand: 4000, reserved: 0, threshold: 500, location: "Switch Bin 1", cost: 0.08 },
+  "CH340C": { onHand: 2200, reserved: 200, threshold: 200, location: "IC Tray 3", cost: 0.42 },
+  "SRD-05VDC-SL-C": { onHand: 650, reserved: 50, threshold: 50, location: "Relay Rack 1", cost: 0.65 },
+};
+
 export const seedDatabase = async () => {
-  console.log(`Seeding ${realWorldElectronicsCatalog.length} realistic components into master items catalog...`);
+  console.log(`1. Seeding ${realWorldElectronicsCatalog.length} master components into items catalog...`);
 
   for (const item of realWorldElectronicsCatalog) {
     await db
@@ -895,7 +722,43 @@ export const seedDatabase = async () => {
       });
   }
 
-  console.log(`✅ Successfully seeded ${realWorldElectronicsCatalog.length} components with real manufacturers, modules, sensors, and displays!`);
+  console.log("2. Seeding warehouse stock levels into inventory table...");
+
+  const allItems = await db.select().from(itemsTable);
+  const itemMap = new Map(allItems.map((i) => [i.partNumber, i.id]));
+
+  let inventoryCount = 0;
+
+  for (const [partNumber, profile] of Object.entries(inventorySeedProfiles)) {
+    const itemId = itemMap.get(partNumber);
+    if (!itemId) continue;
+
+    await db
+      .insert(inventoryTable)
+      .values({
+        itemId,
+        quantityOnHand: profile.onHand,
+        quantityReserved: profile.reserved,
+        reorderThreshold: profile.threshold,
+        location: profile.location,
+        unitCost: profile.cost,
+      })
+      .onConflictDoUpdate({
+        target: inventoryTable.itemId,
+        set: {
+          quantityOnHand: profile.onHand,
+          quantityReserved: profile.reserved,
+          reorderThreshold: profile.threshold,
+          location: profile.location,
+          unitCost: profile.cost,
+          updatedAt: new Date(),
+        },
+      });
+
+    inventoryCount++;
+  }
+
+  console.log(`✅ Successfully seeded ${realWorldElectronicsCatalog.length} master items & ${inventoryCount} warehouse inventory records!`);
 };
 
 seedDatabase()
