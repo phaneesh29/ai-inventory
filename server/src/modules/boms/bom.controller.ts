@@ -3,7 +3,11 @@ import * as bomService from "./bom.service.js";
 import { runBOMUploadAndAuditWorkflow } from "../agents/bomWorkflow.service.js";
 import { sendSuccess } from "../../utils/apiResponse.js";
 import { BadRequestError } from "../../utils/errors.js";
-import type { CreateBOMInput, UpdateBOMInput, AddBOMItemsInput } from "./bom.schema.js";
+import type {
+  CreateBOMInput,
+  UpdateBOMInput,
+  AddBOMItemsInput,
+} from "./bom.schema.js";
 
 export const uploadBOMFile = async (req: Request, res: Response): Promise<Response> => {
   if (!req.file) {
@@ -29,7 +33,7 @@ export const uploadBOMFile = async (req: Request, res: Response): Promise<Respon
   return sendSuccess(
     res,
     result,
-    "BOM file uploaded, persisted, and audited against inventory successfully",
+    "BOM file uploaded, audited, and process execution plan formulated",
     201
   );
 };

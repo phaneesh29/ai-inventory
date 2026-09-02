@@ -2,6 +2,13 @@ import { parseUploadedBOMFile } from "../boms/bom.parser.js";
 import { runBOMIngestionAgent, BOMIngestionResult } from "./bomIngestion/bomIngestion.agent.js";
 import { runInventoryAuditAgent, InventoryAuditResult } from "./inventoryAudit/inventoryAudit.agent.js";
 import { runAlternativeMatcherAgent, AlternativeMatchResult } from "./alternativeMatcher/alternativeMatcher.agent.js";
+import {
+  generateProcessExecutionPlan,
+  executeApprovedProcessPlan,
+  ProcessPlanProposal,
+  ExecuteApprovedPlanParams,
+} from "./processExecution/processExecution.agent.js";
+import * as bomService from "../boms/bom.service.js";
 import { InternalServerError } from "../../utils/errors.js";
 import type { EnrichedBOM } from "../boms/bom.service.js";
 
@@ -18,6 +25,7 @@ export interface BOMWorkflowResult {
   bom: EnrichedBOM;
   audit: InventoryAuditResult;
   alternatives: AlternativeMatchResult | null;
+  processPlan: ProcessPlanProposal;
   bomAgentSummary: string;
 }
 
@@ -64,10 +72,27 @@ export const runBOMUploadAndAuditWorkflow = async (
     });
   }
 
+  const processPlan = await generateProcessExecutionPlan({
+    bom: ingestionResult.bom,
+    audit: auditResult,
+    alternatives: alternativesResult,
+  });
+
   return {
     bom: ingestionResult.bom,
     audit: auditResult,
     alternatives: alternativesResult,
+    processPlan,
     bomAgentSummary: ingestionResult.agentSummary,
+  };
+};
+
+export const approveBOMProcessWorkflow = async (params: ExecuteApprovedPlanParams) => {
+  const executionResult = await executeApprovedProcessPlan(params);
+  const updatedBOM = await bomService.findBOMById(params.bomId);
+
+  return {
+    bom: updatedBOM,
+    executionResult,
   };
 };
