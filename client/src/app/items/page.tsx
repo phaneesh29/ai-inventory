@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { fetchItems, createItem, deleteItem, type Item } from "@/services/api";
+import { fetchItems, createItem, updateItem, deleteItem, type Item } from "@/services/api";
 import { useToast } from "@/context/ToastContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -19,6 +19,7 @@ import {
   Check,
   Trash2,
   SlidersHorizontal,
+  Pencil,
   X,
 } from "lucide-react";
 
@@ -47,6 +48,17 @@ export default function ComponentCatalogPage() {
   const [newManufacturer, setNewManufacturer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [editPartNumber, setEditPartNumber] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editUnit, setEditUnit] = useState("pcs");
+  const [editDescription, setEditDescription] = useState("");
+  const [editFootprint, setEditFootprint] = useState("");
+  const [editManufacturer, setEditManufacturer] = useState("");
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [editFormError, setEditFormError] = useState<string | null>(null);
 
   const loadCatalog = async () => {
     try {
@@ -98,6 +110,56 @@ export default function ComponentCatalogPage() {
     setCopiedMpn(mpn);
     toast.info("Copied to Clipboard", mpn);
     setTimeout(() => setCopiedMpn(null), 2000);
+  };
+
+  const handleOpenEdit = (item: Item, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingItem(item);
+    setEditPartNumber(item.partNumber);
+    setEditName(item.name);
+    setEditCategory(item.category);
+    setEditUnit(item.unit || "pcs");
+    setEditDescription(item.description || "");
+    setEditFootprint(item.specifications?.packageFootprint || "");
+    setEditManufacturer(item.specifications?.manufacturer || "");
+    setEditFormError(null);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    if (!editPartNumber.trim() || !editName.trim() || !editCategory.trim()) {
+      setEditFormError("Part number, name, and category are required.");
+      return;
+    }
+
+    try {
+      setIsSubmittingEdit(true);
+      setEditFormError(null);
+
+      const specifications: Record<string, any> = { ...editingItem.specifications };
+      if (editManufacturer.trim()) specifications.manufacturer = editManufacturer.trim();
+      if (editFootprint.trim()) specifications.packageFootprint = editFootprint.trim();
+
+      const updated = await updateItem(editingItem.id, {
+        partNumber: editPartNumber.trim(),
+        name: editName.trim(),
+        category: editCategory.trim(),
+        unit: editUnit.trim() || "pcs",
+        description: editDescription.trim() || null,
+        specifications,
+      });
+
+      toast.success("Component Updated", `"${updated.partNumber}" was updated.`);
+      setEditingItem(null);
+      if (selectedItem?.id === updated.id) setSelectedItem(updated);
+      await loadCatalog();
+    } catch (err: any) {
+      setEditFormError(err.message || "Failed to update component");
+      toast.error("Update Failed", err.message);
+    } finally {
+      setIsSubmittingEdit(false);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -349,20 +411,30 @@ export default function ComponentCatalogPage() {
                     <div className="border-t border-[#23252a]/60 pt-2.5 flex items-center justify-between text-[11px] text-[#8a8f98]">
                       <span className="font-mono text-[10px] text-[#62666d]">Unit: {item.unit}</span>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenEdit(item, e)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#5e6ad2] hover:bg-[#14172e] rounded transition-all"
+                          title="Edit Component"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setDeletingItem(item);
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#f87171] transition-all"
+                          className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded transition-all"
                           title="Delete Component"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
-                        <span className="text-[#828fff] text-[11px] font-medium group-hover:underline">
-                          View Specs ➔
+
+                        <span className="text-[#828fff] text-[11px] font-medium group-hover:underline ml-1">
+                          Specs ➔
                         </span>
                       </div>
                     </div>
@@ -401,17 +473,28 @@ export default function ComponentCatalogPage() {
                       <td className="px-4 py-3 text-[#8a8f98]">{specs.manufacturer || "Standard"}</td>
                       <td className="px-4 py-3 font-mono text-[#8a8f98]">{specs.packageFootprint || "SMD"}</td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletingItem(item);
-                          }}
-                          className="p-1 text-[#8a8f98] hover:text-[#f87171] transition-colors"
-                          title="Delete Component"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenEdit(item, e)}
+                            className="p-1 text-[#8a8f98] hover:text-[#5e6ad2] hover:bg-[#14172e] rounded transition-colors"
+                            title="Edit Component"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingItem(item);
+                            }}
+                            className="p-1 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded transition-colors"
+                            title="Delete Component"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -559,6 +642,135 @@ export default function ComponentCatalogPage() {
           </div>
         )}
 
+        {editingItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-100">
+            <Card className="w-full max-w-lg border-[#5e6ad2]/70 bg-[#0f1011] shadow-2xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Pencil className="h-4 w-4 text-[#5e6ad2]" />
+                    <CardTitle>Edit Component: {editingItem.partNumber}</CardTitle>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingItem(null)}
+                    className="p-1 text-[#8a8f98] hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <CardDescription>
+                  Modify master component details and parametric properties.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent>
+                <form onSubmit={handleEditSubmit} className="space-y-3.5 text-xs">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-[#d0d6e0]">
+                      Manufacturer Part Number (MPN) *
+                    </label>
+                    <Input
+                      value={editPartNumber}
+                      onChange={(e) => setEditPartNumber(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-[#d0d6e0]">
+                      Component Full Name *
+                    </label>
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-[#d0d6e0]">
+                        Category *
+                      </label>
+                      <Input
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-[#d0d6e0]">
+                        Unit
+                      </label>
+                      <Input
+                        value={editUnit}
+                        onChange={(e) => setEditUnit(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-[#d0d6e0]">
+                        Manufacturer
+                      </label>
+                      <Input
+                        value={editManufacturer}
+                        onChange={(e) => setEditManufacturer(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-[#d0d6e0]">
+                        Package / Footprint
+                      </label>
+                      <Input
+                        value={editFootprint}
+                        onChange={(e) => setEditFootprint(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-[#d0d6e0]">
+                      Description
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      className="w-full rounded-lg border border-[#23252a] bg-[#0f1011] p-2.5 text-xs text-[#f7f8f8] placeholder:text-[#8a8f98] focus:border-[#5e6ad2] focus:outline-none focus:ring-1 focus:ring-[#5e6ad2]/50"
+                    />
+                  </div>
+
+                  {editFormError && (
+                    <p className="text-[11px] text-[#f87171]">{editFormError}</p>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#23252a]">
+                    <Button
+                      type="button"
+                      variant="tertiary"
+                      size="sm"
+                      onClick={() => setEditingItem(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      disabled={!editPartNumber.trim() || !editName.trim()}
+                      isLoading={isSubmittingEdit}
+                    >
+                      <span>Save Changes</span>
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {selectedItem && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-100">
             <Card className="w-full max-w-xl border-[#23252a] bg-[#0f1011] shadow-2xl">
@@ -619,9 +831,19 @@ export default function ComponentCatalogPage() {
 
                 <div className="flex items-center justify-between text-[11px] text-[#8a8f98] pt-2 border-t border-[#23252a]">
                   <span className="font-mono text-[10px]">ID: {selectedItem.id}</span>
-                  <Button variant="secondary" size="sm" onClick={() => setSelectedItem(null)}>
-                    Close Specification
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={(e) => handleOpenEdit(selectedItem, e)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                      <span>Edit Component</span>
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => setSelectedItem(null)}>
+                      Close
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

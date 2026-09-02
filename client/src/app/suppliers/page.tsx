@@ -4,9 +4,11 @@ import React, { useState, useEffect } from "react";
 import {
   fetchSuppliers,
   createSupplier,
+  updateSupplier,
   deleteSupplier,
   fetchSupplierItems,
   addSupplierItem,
+  updateSupplierItem,
   deleteSupplierItem,
   type Supplier,
   type SupplierItem,
@@ -29,7 +31,7 @@ import {
   ShieldCheck,
   X,
   CreditCard,
-  DollarSign,
+  Pencil,
   Tag,
 } from "lucide-react";
 
@@ -61,6 +63,16 @@ export default function SuppliersPage() {
   const [isSubmittingSupplier, setIsSubmittingSupplier] = useState(false);
   const [supplierFormError, setSupplierFormError] = useState<string | null>(null);
 
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [editSupName, setEditSupName] = useState("");
+  const [editSupEmail, setEditSupEmail] = useState("");
+  const [editSupWebsite, setEditSupWebsite] = useState("");
+  const [editSupLeadTime, setEditSupLeadTime] = useState("");
+  const [editSupScore, setEditSupScore] = useState("");
+  const [editSupPayment, setEditSupPayment] = useState("");
+  const [isSubmittingEditSupplier, setIsSubmittingEditSupplier] = useState(false);
+  const [editSupError, setEditSupError] = useState<string | null>(null);
+
   const [isAddingQuote, setIsAddingQuote] = useState(false);
   const [quotePartNumber, setQuotePartNumber] = useState("");
   const [quoteSupplierSku, setQuoteSupplierSku] = useState("");
@@ -75,6 +87,15 @@ export default function SuppliersPage() {
   const [quoteMoq, setQuoteMoq] = useState("1");
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
   const [quoteFormError, setQuoteFormError] = useState<string | null>(null);
+
+  const [editingQuoteItem, setEditingQuoteItem] = useState<SupplierItem | null>(null);
+  const [editQuoteSku, setEditQuoteSku] = useState("");
+  const [editQuoteTiers, setEditQuoteTiers] = useState<PriceTier[]>([]);
+  const [editQuoteStock, setEditQuoteStock] = useState("");
+  const [editQuoteLeadTime, setEditQuoteLeadTime] = useState("");
+  const [editQuoteMoq, setEditQuoteMoq] = useState("");
+  const [isSubmittingEditQuote, setIsSubmittingEditQuote] = useState(false);
+  const [editQuoteError, setEditQuoteError] = useState<string | null>(null);
 
   const loadSuppliers = async () => {
     try {
@@ -103,6 +124,47 @@ export default function SuppliersPage() {
       toast.error("Failed to load quotes", err.message);
     } finally {
       setIsLoadingItems(false);
+    }
+  };
+
+  const handleOpenEditSupplier = (sup: Supplier, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingSupplier(sup);
+    setEditSupName(sup.name);
+    setEditSupEmail(sup.contactEmail || "");
+    setEditSupWebsite(sup.website || "");
+    setEditSupLeadTime(String(sup.leadTimeDaysAverage));
+    setEditSupScore(String(sup.reliabilityScore));
+    setEditSupPayment(sup.paymentTerms);
+    setEditSupError(null);
+  };
+
+  const handleEditSupplierSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSupplier || !editSupName.trim()) return;
+
+    try {
+      setIsSubmittingEditSupplier(true);
+      setEditSupError(null);
+
+      const updated = await updateSupplier(editingSupplier.id, {
+        name: editSupName.trim(),
+        contactEmail: editSupEmail.trim() || null,
+        website: editSupWebsite.trim() || null,
+        leadTimeDaysAverage: parseFloat(editSupLeadTime) || 3.0,
+        reliabilityScore: parseFloat(editSupScore) || 95.0,
+        paymentTerms: editSupPayment.trim() || "Net 30",
+      });
+
+      toast.success("Supplier Updated", `"${updated.name}" updated successfully.`);
+      setEditingSupplier(null);
+      if (selectedSupplier?.id === updated.id) setSelectedSupplier(updated);
+      await loadSuppliers();
+    } catch (err: any) {
+      setEditSupError(err.message || "Failed to update supplier");
+      toast.error("Update Failed", err.message);
+    } finally {
+      setIsSubmittingEditSupplier(false);
     }
   };
 
@@ -163,44 +225,89 @@ export default function SuppliersPage() {
     }
   };
 
-  const handleBasePriceChange = (val: string) => {
-    setQuoteBasePrice(val);
-    const num = parseFloat(val);
-    if (!isNaN(num) && num > 0) {
-      setCustomPriceTiers([
-        { minQuantity: 1, unitPrice: num },
-        { minQuantity: 50, unitPrice: Number((num * 0.9).toFixed(3)) },
-        { minQuantity: 500, unitPrice: Number((num * 0.8).toFixed(3)) },
-      ]);
-    }
-  };
-
-  const handleUpdateTierQuantity = (index: number, qty: number) => {
-    setCustomPriceTiers((prev) => {
+  const handleUpdateTierQuantity = (index: number, qty: number, isEdit = false) => {
+    const setter = isEdit ? setEditQuoteTiers : setCustomPriceTiers;
+    setter((prev) => {
       const copy = [...prev];
       copy[index] = { ...copy[index], minQuantity: qty };
       return copy;
     });
   };
 
-  const handleUpdateTierPrice = (index: number, price: number) => {
-    setCustomPriceTiers((prev) => {
+  const handleUpdateTierPrice = (index: number, price: number, isEdit = false) => {
+    const setter = isEdit ? setEditQuoteTiers : setCustomPriceTiers;
+    setter((prev) => {
       const copy = [...prev];
       copy[index] = { ...copy[index], unitPrice: price };
       return copy;
     });
   };
 
-  const handleAddTierRow = () => {
-    const lastTier = customPriceTiers[customPriceTiers.length - 1];
+  const handleAddTierRow = (isEdit = false) => {
+    const tiers = isEdit ? editQuoteTiers : customPriceTiers;
+    const setter = isEdit ? setEditQuoteTiers : setCustomPriceTiers;
+    const lastTier = tiers[tiers.length - 1];
     const newQty = lastTier ? lastTier.minQuantity * 5 : 1000;
     const newPrice = lastTier ? Number((lastTier.unitPrice * 0.9).toFixed(3)) : 1.0;
-    setCustomPriceTiers((prev) => [...prev, { minQuantity: newQty, unitPrice: newPrice }]);
+    setter((prev) => [...prev, { minQuantity: newQty, unitPrice: newPrice }]);
   };
 
-  const handleRemoveTierRow = (index: number) => {
-    if (customPriceTiers.length <= 1) return;
-    setCustomPriceTiers((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveTierRow = (index: number, isEdit = false) => {
+    const setter = isEdit ? setEditQuoteTiers : setCustomPriceTiers;
+    setter((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleOpenEditQuote = (item: SupplierItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingQuoteItem(item);
+    setEditQuoteSku(item.supplierPartNumber);
+    setEditQuoteTiers(item.priceTiers && item.priceTiers.length > 0 ? item.priceTiers : [{ minQuantity: 1, unitPrice: item.unitPrice }]);
+    setEditQuoteStock(String(item.stockAvailable));
+    setEditQuoteLeadTime(String(item.leadTimeDays));
+    setEditQuoteMoq(String(item.minimumOrderQuantity));
+    setEditQuoteError(null);
+  };
+
+  const handleEditQuoteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSupplier || !editingQuoteItem) return;
+    if (!editQuoteSku.trim()) {
+      setEditQuoteError("Distributor SKU is required.");
+      return;
+    }
+
+    const validTiers = editQuoteTiers.filter((t) => t.minQuantity > 0 && t.unitPrice > 0);
+    if (validTiers.length === 0) {
+      setEditQuoteError("Please provide at least one valid price tier.");
+      return;
+    }
+
+    try {
+      setIsSubmittingEditQuote(true);
+      setEditQuoteError(null);
+
+      const basePrice = validTiers[0].unitPrice;
+
+      await updateSupplierItem(selectedSupplier.id, editingQuoteItem.itemId, {
+        supplierPartNumber: editQuoteSku.trim(),
+        unitPrice: basePrice,
+        stockAvailable: parseInt(editQuoteStock, 10) || 0,
+        leadTimeDays: parseFloat(editQuoteLeadTime) || 3,
+        minimumOrderQuantity: parseInt(editQuoteMoq, 10) || 1,
+        priceTiers: validTiers,
+      });
+
+      toast.success("Quote Updated", `Updated pricing for "${editingQuoteItem.partNumber}".`);
+      setEditingQuoteItem(null);
+
+      const updated = await fetchSupplierItems(selectedSupplier.id);
+      setSupplierItems(updated);
+    } catch (err: any) {
+      setEditQuoteError(err.message || "Failed to update catalog quote");
+      toast.error("Update Failed", err.message);
+    } finally {
+      setIsSubmittingEditQuote(false);
+    }
   };
 
   const handleAddQuoteSubmit = async (e: React.FormEvent) => {
@@ -435,20 +542,29 @@ export default function SuppliersPage() {
                     <div className="border-t border-[#23252a]/60 pt-2.5 flex items-center justify-between text-[11px] text-[#8a8f98]">
                       <span>{sup.totalCatalogItems ?? 0} Catalog Items</span>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenEditSupplier(sup, e)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#5e6ad2] hover:bg-[#14172e] rounded transition-all"
+                          title="Edit Supplier"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setDeletingSupplier(sup);
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#f87171] transition-all"
+                          className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded transition-all"
                           title="Delete Supplier"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
-                        <span className="text-[#828fff] font-medium group-hover:underline">
-                          Inspect Quotes ➔
+                        <span className="text-[#828fff] font-medium group-hover:underline ml-1">
+                          Quotes ➔
                         </span>
                       </div>
                     </div>
@@ -552,15 +668,25 @@ export default function SuppliersPage() {
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
                           <Badge variant="primary">${item.unitPrice.toFixed(3)}</Badge>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenEditQuote(item, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#5e6ad2] hover:bg-[#14172e] rounded transition-all"
+                            title="Edit Quote"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeletingQuoteItemId(item.itemId);
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#f87171] transition-all"
+                            className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded transition-all"
                             title="Delete Quote"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -744,6 +870,125 @@ export default function SuppliersPage() {
           </div>
         )}
 
+        {editingSupplier && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-100">
+            <Card className="w-full max-w-md border-[#5e6ad2]/70 bg-[#0f1011] shadow-2xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Pencil className="h-4 w-4 text-[#5e6ad2]" />
+                    <CardTitle>Edit Supplier: {editingSupplier.code}</CardTitle>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingSupplier(null)}
+                    className="p-1 text-[#8a8f98] hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <CardDescription>
+                  Update distributor terms, lead times, and contact information.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent>
+                <form onSubmit={handleEditSupplierSubmit} className="space-y-3.5 text-xs">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-[#d0d6e0]">
+                      Supplier Name *
+                    </label>
+                    <Input
+                      value={editSupName}
+                      onChange={(e) => setEditSupName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-[#d0d6e0]">
+                        Average Lead Time (Days)
+                      </label>
+                      <Input
+                        type="number"
+                        value={editSupLeadTime}
+                        onChange={(e) => setEditSupLeadTime(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-[#d0d6e0]">
+                        Reliability Score (%)
+                      </label>
+                      <Input
+                        type="number"
+                        value={editSupScore}
+                        onChange={(e) => setEditSupScore(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-[#d0d6e0]">
+                      Contact Email
+                    </label>
+                    <Input
+                      type="email"
+                      value={editSupEmail}
+                      onChange={(e) => setEditSupEmail(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-[#d0d6e0]">
+                      Website Portal URL
+                    </label>
+                    <Input
+                      type="url"
+                      value={editSupWebsite}
+                      onChange={(e) => setEditSupWebsite(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-[#d0d6e0]">
+                      Payment Terms
+                    </label>
+                    <Input
+                      value={editSupPayment}
+                      onChange={(e) => setEditSupPayment(e.target.value)}
+                    />
+                  </div>
+
+                  {editSupError && (
+                    <p className="text-[11px] text-[#f87171]">{editSupError}</p>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#23252a]">
+                    <Button
+                      type="button"
+                      variant="tertiary"
+                      size="sm"
+                      onClick={() => setEditingSupplier(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      disabled={!editSupName.trim()}
+                      isLoading={isSubmittingEditSupplier}
+                    >
+                      <span>Save Changes</span>
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {isAddingQuote && selectedSupplier && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-100">
             <Card className="w-full max-w-lg border-[#5e6ad2]/70 bg-[#0f1011] shadow-2xl">
@@ -801,7 +1046,7 @@ export default function SuppliersPage() {
                       </label>
                       <button
                         type="button"
-                        onClick={handleAddTierRow}
+                        onClick={() => handleAddTierRow(false)}
                         className="text-[11px] font-medium text-[#828fff] hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Plus className="h-3 w-3" />
@@ -817,7 +1062,7 @@ export default function SuppliersPage() {
                             <Input
                               type="number"
                               value={tier.minQuantity}
-                              onChange={(e) => handleUpdateTierQuantity(idx, parseInt(e.target.value, 10) || 1)}
+                              onChange={(e) => handleUpdateTierQuantity(idx, parseInt(e.target.value, 10) || 1, false)}
                               className="h-7 text-xs font-mono"
                             />
                           </div>
@@ -828,7 +1073,7 @@ export default function SuppliersPage() {
                               type="number"
                               step="0.001"
                               value={tier.unitPrice || ""}
-                              onChange={(e) => handleUpdateTierPrice(idx, parseFloat(e.target.value) || 0)}
+                              onChange={(e) => handleUpdateTierPrice(idx, parseFloat(e.target.value) || 0, false)}
                               placeholder="0.000"
                               className="h-7 text-xs font-mono text-[#4ade80]"
                             />
@@ -837,7 +1082,7 @@ export default function SuppliersPage() {
                           {customPriceTiers.length > 1 && (
                             <button
                               type="button"
-                              onClick={() => handleRemoveTierRow(idx)}
+                              onClick={() => handleRemoveTierRow(idx, false)}
                               className="p-1 text-[#8a8f98] hover:text-[#f87171] transition-colors mt-4"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -908,6 +1153,159 @@ export default function SuppliersPage() {
                     >
                       <Plus className="h-3.5 w-3.5" />
                       <span>Save Custom Quote</span>
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {editingQuoteItem && selectedSupplier && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-100">
+            <Card className="w-full max-w-lg border-[#5e6ad2]/70 bg-[#0f1011] shadow-2xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Pencil className="h-4 w-4 text-[#5e6ad2]" />
+                    <CardTitle>Edit Quote: {editingQuoteItem.partNumber}</CardTitle>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingQuoteItem(null)}
+                    className="p-1 text-[#8a8f98] hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <CardDescription>
+                  Modify distributor SKU, lead times, stock, and volume price breaks.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent>
+                <form onSubmit={handleEditQuoteSubmit} className="space-y-4 text-xs">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-[#d0d6e0]">
+                      Distributor SKU *
+                    </label>
+                    <Input
+                      value={editQuoteSku}
+                      onChange={(e) => setEditQuoteSku(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2 rounded-xl bg-[#010102] border border-[#23252a] p-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-[#8a8f98] flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5 text-[#5e6ad2]" />
+                        <span>Volume Price Breaks</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleAddTierRow(true)}
+                        className="text-[11px] font-medium text-[#828fff] hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="h-3 w-3" />
+                        <span>Add Tier</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {editQuoteTiers.map((tier, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <div className="w-28">
+                            <span className="text-[10px] text-[#8a8f98] block mb-0.5">Min Qty</span>
+                            <Input
+                              type="number"
+                              value={tier.minQuantity}
+                              onChange={(e) => handleUpdateTierQuantity(idx, parseInt(e.target.value, 10) || 1, true)}
+                              className="h-7 text-xs font-mono"
+                            />
+                          </div>
+
+                          <div className="flex-1">
+                            <span className="text-[10px] text-[#8a8f98] block mb-0.5">Unit Price ($)</span>
+                            <Input
+                              type="number"
+                              step="0.001"
+                              value={tier.unitPrice || ""}
+                              onChange={(e) => handleUpdateTierPrice(idx, parseFloat(e.target.value) || 0, true)}
+                              placeholder="0.000"
+                              className="h-7 text-xs font-mono text-[#4ade80]"
+                            />
+                          </div>
+
+                          {editQuoteTiers.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTierRow(idx, true)}
+                              className="p-1 text-[#8a8f98] hover:text-[#f87171] transition-colors mt-4"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-[#d0d6e0]">
+                        Stock Available
+                      </label>
+                      <Input
+                        type="number"
+                        value={editQuoteStock}
+                        onChange={(e) => setEditQuoteStock(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-[#d0d6e0]">
+                        Lead Time (Days)
+                      </label>
+                      <Input
+                        type="number"
+                        value={editQuoteLeadTime}
+                        onChange={(e) => setEditQuoteLeadTime(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-[#d0d6e0]">
+                        MOQ
+                      </label>
+                      <Input
+                        type="number"
+                        value={editQuoteMoq}
+                        onChange={(e) => setEditQuoteMoq(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {editQuoteError && (
+                    <p className="text-[11px] text-[#f87171]">{editQuoteError}</p>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#23252a]">
+                    <Button
+                      type="button"
+                      variant="tertiary"
+                      size="sm"
+                      onClick={() => setEditingQuoteItem(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      disabled={!editQuoteSku.trim()}
+                      isLoading={isSubmittingEditQuote}
+                    >
+                      <span>Save Quote Changes</span>
                     </Button>
                   </div>
                 </form>

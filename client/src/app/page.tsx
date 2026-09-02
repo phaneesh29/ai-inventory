@@ -2,7 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { fetchWorkspaces, createWorkspace, deleteWorkspace, type Workspace } from "@/services/api";
+import {
+  fetchWorkspaces,
+  createWorkspace,
+  updateWorkspace,
+  deleteWorkspace,
+  type Workspace,
+} from "@/services/api";
 import { useToast } from "@/context/ToastContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +24,8 @@ import {
   Search,
   RefreshCw,
   FolderPlus,
+  Pencil,
+  X,
 } from "lucide-react";
 
 export default function WorkspacePortalPage() {
@@ -30,6 +38,11 @@ export default function WorkspacePortalPage() {
   const [newName, setNewName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
+  const [editName, setEditName] = useState("");
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const [deletingWorkspace, setDeletingWorkspace] = useState<Workspace | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -67,6 +80,33 @@ export default function WorkspacePortalPage() {
       toast.error("Creation Failed", err.message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (ws: Workspace, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingWorkspace(ws);
+    setEditName(ws.name);
+    setEditError(null);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingWorkspace || !editName.trim()) return;
+
+    try {
+      setIsSubmittingEdit(true);
+      setEditError(null);
+      await updateWorkspace(editingWorkspace.id, editName.trim());
+      toast.success("Workspace Renamed", `Updated to "${editName.trim()}".`);
+      setEditingWorkspace(null);
+      await loadWorkspaces();
+    } catch (err: any) {
+      setEditError(err.message || "Failed to update workspace");
+      toast.error("Update Failed", err.message);
+    } finally {
+      setIsSubmittingEdit(false);
     }
   };
 
@@ -204,6 +244,68 @@ export default function WorkspacePortalPage() {
           </Card>
         )}
 
+        {editingWorkspace && (
+          <Card className="border-[#5e6ad2]/60 bg-[#0f1011] shadow-xl animate-in fade-in zoom-in-95 duration-150">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Pencil className="h-4 w-4 text-[#5e6ad2]" />
+                  <CardTitle>Edit Workspace Details</CardTitle>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingWorkspace(null)}
+                  className="p-1 text-[#8a8f98] hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <CardDescription>
+                Update the name and metadata for this hardware project workspace.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent>
+              <form onSubmit={handleUpdate} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-[#d0d6e0]">
+                    Workspace Name
+                  </label>
+                  <Input
+                    autoFocus
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                  />
+                  {editError && (
+                    <p className="text-[11px] text-[#f87171] pt-1">{editError}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    size="sm"
+                    onClick={() => setEditingWorkspace(null)}
+                  >
+                    Cancel
+                  </Button>
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    disabled={!editName.trim()}
+                    isLoading={isSubmittingEdit}
+                  >
+                    <span>Save Changes</span>
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
@@ -251,18 +353,29 @@ export default function WorkspacePortalPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDeletingWorkspace(ws);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded-md transition-all"
-                    title="Delete Workspace"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenEdit(ws, e)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-[#8a8f98] hover:text-[#5e6ad2] hover:bg-[#14172e] rounded-md transition-all"
+                      title="Edit Workspace"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDeletingWorkspace(ws);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded-md transition-all"
+                      title="Delete Workspace"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="border-t border-[#23252a]/60 pt-3 flex items-center justify-between text-[11px] text-[#8a8f98]">

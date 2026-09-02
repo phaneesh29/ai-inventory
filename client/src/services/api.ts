@@ -150,6 +150,19 @@ export const createWorkspace = async (name: string): Promise<Workspace> => {
   return json.data;
 };
 
+export const updateWorkspace = async (id: string, name: string): Promise<Workspace> => {
+  const res = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  const json: ApiResponse<Workspace> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to update workspace");
+  }
+  return json.data;
+};
+
 export const deleteWorkspace = async (id: string): Promise<void> => {
   const res = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
     method: "DELETE",
@@ -224,7 +237,7 @@ export const updateItem = async (
     name: string;
     category: string;
     unit: string;
-    description: string;
+    description: string | null;
     specifications: Record<string, any>;
   }>
 ): Promise<Item> => {
@@ -307,6 +320,31 @@ export const createSupplier = async (payload: {
   return json.data;
 };
 
+export const updateSupplier = async (
+  id: string,
+  payload: Partial<{
+    name: string;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    website: string | null;
+    reliabilityScore: number;
+    leadTimeDaysAverage: number;
+    paymentTerms: string;
+    currency: string;
+  }>
+): Promise<Supplier> => {
+  const res = await fetch(`${API_BASE_URL}/suppliers/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<Supplier> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to update supplier");
+  }
+  return json.data;
+};
+
 export const deleteSupplier = async (id: string): Promise<void> => {
   const res = await fetch(`${API_BASE_URL}/suppliers/${id}`, {
     method: "DELETE",
@@ -351,6 +389,32 @@ export const addSupplierItem = async (
   const json: ApiResponse<SupplierItem> = await res.json();
   if (!json.success) {
     throw new Error(json.error?.message || "Failed to add supplier catalog quote");
+  }
+  return json.data;
+};
+
+export const updateSupplierItem = async (
+  supplierId: string,
+  itemId: string,
+  payload: Partial<{
+    supplierPartNumber: string;
+    unitPrice: number;
+    minimumOrderQuantity: number;
+    packageType: string;
+    stockAvailable: number;
+    leadTimeDays: number;
+    priceTiers: PriceTier[];
+    isPreferred: boolean;
+  }>
+): Promise<SupplierItem> => {
+  const res = await fetch(`${API_BASE_URL}/suppliers/${supplierId}/items/${itemId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json: ApiResponse<SupplierItem> = await res.json();
+  if (!json.success) {
+    throw new Error(json.error?.message || "Failed to update supplier quote");
   }
   return json.data;
 };
