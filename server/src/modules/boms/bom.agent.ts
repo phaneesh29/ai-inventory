@@ -1,6 +1,5 @@
 import { ToolLoopAgent } from "ai";
-import { createMistral } from "@ai-sdk/mistral";
-import { env } from "../../config/env.js";
+import { mistral } from "@ai-sdk/mistral";
 import { EnrichedBOM } from "./bom.service.js";
 import { BOM_AGENT_INSTRUCTIONS } from "./bom.instructions.js";
 import { createBOMTools } from "./bom.tools.js";
@@ -20,10 +19,6 @@ export interface BOMAgentResult {
 }
 
 export const runBOMAgent = async (params: RunBOMAgentParams): Promise<BOMAgentResult> => {
-  const mistral = createMistral({
-    apiKey: env.MISTRAL_API_KEY,
-  });
-
   const { tools, getCreatedBOM } = createBOMTools();
 
   const agent = new ToolLoopAgent({
@@ -41,7 +36,7 @@ export const runBOMAgent = async (params: RunBOMAgentParams): Promise<BOMAgentRe
 Workspace ID: ${params.workspaceId}
 BOM Title: ${params.name}
 Version: ${params.version || "v1.0"}
-Custom Instructions: ${params.instructions || "Standardize semiconductor specifications, normalize units/categories, and persist."}
+Custom Instructions: ${params.instructions || "Standardize component specifications, normalize units/categories, and persist."}
 
 Raw BOM Content / Table Data:
 ${contentToProcess}`,
