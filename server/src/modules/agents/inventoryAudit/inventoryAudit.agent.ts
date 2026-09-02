@@ -51,7 +51,7 @@ export const runInventoryAuditAgent = async (
   const { tools, getCachedData } = createInventoryAuditTools();
 
   const agent = new ToolLoopAgent({
-    model: mistral("mistral-medium-latest"),
+    model: mistral("mistral-small-latest"),
     instructions: INVENTORY_AUDIT_INSTRUCTIONS,
     tools,
   });

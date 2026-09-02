@@ -24,7 +24,7 @@ export const runBOMIngestionAgent = async (
   const { tools, getCreatedBOM } = createBOMIngestionTools();
 
   const agent = new ToolLoopAgent({
-    model: mistral("mistral-medium-latest"),
+    model: mistral("codestral-latest"),
     instructions: BOM_INGESTION_INSTRUCTIONS,
     tools,
   });
