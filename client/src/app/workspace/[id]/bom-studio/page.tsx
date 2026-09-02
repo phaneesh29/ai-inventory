@@ -28,7 +28,6 @@ import {
   Sparkles,
   ArrowRight,
   ArrowLeft,
-  ChevronRight,
   Download,
   Trash2,
   Eye,
@@ -38,7 +37,6 @@ import {
   Truck,
   FileSpreadsheet,
   X,
-  AlertTriangle,
   Play,
   Check,
 } from "lucide-react";
@@ -314,39 +312,97 @@ export default function BOMStudioPage() {
     document.body.removeChild(link);
   };
 
+  const totalComponentsCount = boms.reduce((acc, b) => acc + (b.totalItems || 0), 0);
+
   return (
     <div className="min-h-screen bg-[#010102] text-[#f7f8f8]">
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#23252a] pb-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href={`/workspace/${workspaceId}`}
-              className="p-2 rounded-lg bg-[#0f1011] border border-[#23252a] text-[#8a8f98] hover:text-[#f7f8f8] hover:bg-[#141516] transition-colors"
-              title="Back to Workspace"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8a8f98]">
-                  {workspace?.name || "Hardware Workspace"}
-                </span>
-                <span className="text-[#3e3e44]">•</span>
-                <span className="text-[10px] font-mono text-[#5e6ad2]">Autonomous BOM Studio</span>
-              </div>
-              <h1 className="text-xl font-bold tracking-tight text-[#f7f8f8] sm:text-2xl mt-0.5">
-                Bill of Materials AI Pipeline
-              </h1>
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#23252a] pb-6">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8a8f98]">
+                Autonomous Hardware Engine
+              </span>
+              <Badge variant="primary">6-Agent Pipeline</Badge>
             </div>
+            <h1 className="text-2xl font-bold tracking-tight text-[#f7f8f8] sm:text-3xl mt-1">
+              BOM Workflow Studio
+            </h1>
+            <p className="text-xs text-[#8a8f98] mt-1 max-w-2xl">
+              Autonomous ingestion, stock gap audits, distributor price benchmark, and purchase order formulation for {workspace?.name || "this workspace"}.
+            </p>
           </div>
 
+          <div className="flex items-center gap-2">
+            <Link href={`/workspace/${workspaceId}`}>
+              <Button variant="secondary" size="sm">
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Back to Project</span>
+              </Button>
+            </Link>
+
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={loadData}
+              isLoading={isLoadingBOMs}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Refresh</span>
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="bg-[#0f1011] border-[#23252a] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[#8a8f98] font-medium">Target Project</span>
+              <Layers className="h-4 w-4 text-[#5e6ad2]" />
+            </div>
+            <p className="text-base font-bold font-mono text-[#f7f8f8] mt-2 truncate">
+              {workspace?.name || "Hardware Project"}
+            </p>
+          </Card>
+
+          <Card className="bg-[#0f1011] border-[#23252a] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[#8a8f98] font-medium">Active Assemblies</span>
+              <Boxes className="h-4 w-4 text-[#828fff]" />
+            </div>
+            <p className="text-xl font-bold font-mono text-[#828fff] mt-2">
+              {boms.length} BOMs
+            </p>
+          </Card>
+
+          <Card className="bg-[#0f1011] border-[#23252a] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[#8a8f98] font-medium">Distributor Sourcing</span>
+              <Truck className="h-4 w-4 text-[#facc15]" />
+            </div>
+            <p className="text-sm font-bold font-mono text-[#facc15] mt-2">
+              DigiKey • Mouser • LCSC
+            </p>
+          </Card>
+
+          <Card className="bg-[#0f1011] border-[#23252a] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[#8a8f98] font-medium">Pipeline Status</span>
+              <Sparkles className="h-4 w-4 text-[#4ade80]" />
+            </div>
+            <p className="text-sm font-bold font-mono text-[#4ade80] mt-2">
+              {isProcessing ? "Executing Agents..." : "Ready for Ingestion"}
+            </p>
+          </Card>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0f1011] p-3 rounded-xl border border-[#23252a]">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab("studio")}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                 activeTab === "studio"
                   ? "bg-[#5e6ad2] text-white"
-                  : "bg-[#0f1011] border border-[#23252a] text-[#8a8f98] hover:text-[#f7f8f8]"
+                  : "bg-[#010102] border border-[#23252a] text-[#8a8f98] hover:text-[#f7f8f8]"
               }`}
             >
               AI Ingestion Studio
@@ -356,17 +412,17 @@ export default function BOMStudioPage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                 activeTab === "registry"
                   ? "bg-[#5e6ad2] text-white"
-                  : "bg-[#0f1011] border border-[#23252a] text-[#8a8f98] hover:text-[#f7f8f8]"
+                  : "bg-[#010102] border border-[#23252a] text-[#8a8f98] hover:text-[#f7f8f8]"
               }`}
             >
-              Workspace BOMs ({boms.length})
+              Workspace Assemblies ({boms.length})
             </button>
           </div>
         </div>
 
         {activeTab === "studio" && (
           <div className="space-y-6">
-            <Card className="border-[#23252a] bg-[#0f1011] shadow-xl">
+            <Card className="border-[#23252a] bg-[#0f1011]">
               <CardHeader>
                 <CardTitle>
                   <div className="flex items-center gap-2">
@@ -490,7 +546,7 @@ export default function BOMStudioPage() {
             </Card>
 
             {(isProcessing || workflowResult) && (
-              <Card className="border-[#23252a] bg-[#0f1011] shadow-xl">
+              <Card className="border-[#23252a] bg-[#0f1011]">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>
@@ -550,7 +606,7 @@ export default function BOMStudioPage() {
             )}
 
             {workflowResult && (
-              <Card className="border-[#5e6ad2]/60 bg-[#0f1011] shadow-2xl">
+              <Card className="border-[#5e6ad2]/60 bg-[#0f1011]">
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
@@ -659,13 +715,15 @@ export default function BOMStudioPage() {
         {activeTab === "registry" && (
           <div className="space-y-4">
             {isLoadingBOMs ? (
-              <div className="h-48 rounded-xl bg-[#0f1011] border border-[#23252a] animate-pulse" />
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 rounded-xl bg-[#0f1011] border border-[#23252a] animate-pulse" />
+                ))}
+              </div>
             ) : boms.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[#23252a] bg-[#0f1011]/40 p-12 text-center space-y-3">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#141516] border border-[#23252a] text-[#8a8f98]">
-                  <Layers className="h-6 w-6" />
-                </div>
-                <h3 className="text-sm font-semibold text-[#f7f8f8]">No BOMs in this Workspace</h3>
+                <Layers className="mx-auto h-8 w-8 text-[#8a8f98]" />
+                <h3 className="text-sm font-semibold text-[#f7f8f8]">No Bill of Materials in this Workspace</h3>
                 <p className="text-xs text-[#8a8f98] max-w-sm mx-auto">
                   Switch to the AI Ingestion Studio tab to upload your first BOM file.
                 </p>
@@ -675,52 +733,61 @@ export default function BOMStudioPage() {
                 </Button>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-[#23252a] bg-[#0f1011]">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#141516] text-[#8a8f98] border-b border-[#23252a]">
-                    <tr>
-                      <th className="p-3 font-semibold">BOM Name</th>
-                      <th className="p-3 font-semibold">Version</th>
-                      <th className="p-3 font-semibold">Total Line Items</th>
-                      <th className="p-3 font-semibold">Created Date</th>
-                      <th className="p-3 font-semibold text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#23252a] text-[#d0d6e0]">
-                    {boms.map((b) => (
-                      <tr key={b.id} className="hover:bg-[#141516]/50">
-                        <td className="p-3 font-bold text-[#f7f8f8]">{b.name}</td>
-                        <td className="p-3">
-                          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#14172e] border border-[#282d5c] text-[#828fff]">
-                            {b.version}
-                          </span>
-                        </td>
-                        <td className="p-3">{b.totalItems} components</td>
-                        <td className="p-3 text-[#8a8f98]">
-                          {new Date(b.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => handleViewDetail(b.id)}
-                              className="p-1.5 text-[#8a8f98] hover:text-[#828fff] hover:bg-[#14172e] rounded-md transition-colors cursor-pointer"
-                              title="Inspect Line Items"
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setDeletingBOM(b)}
-                              className="p-1.5 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded-md transition-colors cursor-pointer"
-                              title="Delete BOM"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
+              <div className="rounded-xl border border-[#23252a] bg-[#0f1011] overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="border-b border-[#23252a] bg-[#141516] text-[#8a8f98] font-semibold text-[11px] uppercase tracking-wider">
+                      <tr>
+                        <th className="px-4 py-3">Assembly Name</th>
+                        <th className="px-4 py-3">Revision</th>
+                        <th className="px-4 py-3 text-right">Line Items</th>
+                        <th className="px-4 py-3">Created Date</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-[#23252a]/60">
+                      {boms.map((b) => (
+                        <tr key={b.id} className="hover:bg-[#141516]/50 transition-colors">
+                          <td className="px-4 py-3 font-bold text-[#f7f8f8]">{b.name}</td>
+                          <td className="px-4 py-3">
+                            <span className="rounded bg-[#14172e] px-1.5 py-0.5 text-[10px] font-mono text-[#828fff] border border-[#282d5c]">
+                              {b.version}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-mono font-bold text-[#f7f8f8]">
+                            {b.totalItems} components
+                          </td>
+                          <td className="px-4 py-3 text-[#8a8f98] font-mono text-[11px]">
+                            {new Date(b.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleViewDetail(b.id)}
+                                className="p-1.5 text-[#8a8f98] hover:text-[#828fff] hover:bg-[#14172e] rounded-md transition-colors cursor-pointer"
+                                title="Inspect Line Items"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeletingBOM(b)}
+                                className="text-[#8a8f98] hover:text-[#f87171]"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -822,9 +889,11 @@ export default function BOMStudioPage() {
 
         <ConfirmModal
           isOpen={!!deletingBOM}
-          title="Delete BOM Record"
-          description={`Are you sure you want to permanently delete BOM "${deletingBOM?.name}"? All associated assembly line items will be removed.`}
+          title="Delete Bill of Materials"
+          description={`Are you sure you want to permanently delete BOM '${deletingBOM?.name}'? All associated line item placements will be removed.`}
           confirmLabel="Delete BOM"
+          cancelLabel="Cancel"
+          variant="danger"
           isLoading={isDeleting}
           onConfirm={handleConfirmDelete}
           onCancel={() => setDeletingBOM(null)}
