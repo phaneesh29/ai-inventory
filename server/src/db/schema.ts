@@ -45,6 +45,21 @@ export const bomItemsTable = pgTable("bom_items", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const inventoryTable = pgTable("inventory", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  itemId: uuid("item_id")
+    .references(() => itemsTable.id, { onDelete: "cascade" })
+    .unique()
+    .notNull(),
+  quantityOnHand: doublePrecision("quantity_on_hand").default(0).notNull(),
+  quantityReserved: doublePrecision("quantity_reserved").default(0).notNull(),
+  reorderThreshold: doublePrecision("reorder_threshold").default(10).notNull(),
+  location: varchar("location", { length: 100 }).default("Main Warehouse").notNull(),
+  unitCost: doublePrecision("unit_cost"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type Workspace = typeof workspacesTable.$inferSelect;
 export type NewWorkspace = typeof workspacesTable.$inferInsert;
 
@@ -56,3 +71,6 @@ export type NewBOM = typeof bomsTable.$inferInsert;
 
 export type BOMItem = typeof bomItemsTable.$inferSelect;
 export type NewBOMItem = typeof bomItemsTable.$inferInsert;
+
+export type Inventory = typeof inventoryTable.$inferSelect;
+export type NewInventory = typeof inventoryTable.$inferInsert;

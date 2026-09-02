@@ -8,6 +8,13 @@
       "when": 1788282421311,
       "tag": "0000_naive_texas_twister",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788328714385,
+      "tag": "0001_noisy_black_panther",
+      "breakpoints": true
     }
   ]
 }
