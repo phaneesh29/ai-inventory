@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SystemHealthModule } from "./SystemHealthModule";
 import {
   Cpu,
   Boxes,
@@ -108,6 +109,10 @@ export const GlobalSidebar: React.FC = () => {
             })}
           </nav>
         </div>
+      </div>
+
+      <div className="pt-4 border-t border-[#23252a]">
+        <SystemHealthModule />
       </div>
     </div>
   );

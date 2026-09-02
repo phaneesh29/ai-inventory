@@ -24,6 +24,37 @@ export interface Workspace {
   updatedAt: string;
 }
 
+export interface SystemHealthData {
+  status: "ok" | "degraded" | "error";
+  latencyMs: number;
+  timestamp: string;
+  message?: string;
+}
+
+export const checkSystemHealth = async (): Promise<SystemHealthData> => {
+  const startTime = Date.now();
+  try {
+    const res = await fetch(`${API_BASE_URL}/health`, {
+      cache: "no-store",
+    });
+    const latencyMs = Date.now() - startTime;
+    const json: ApiResponse<{ status: string; timestamp: string }> = await res.json();
+    return {
+      status: json.success && json.data?.status === "ok" ? "ok" : "degraded",
+      latencyMs,
+      timestamp: json.data?.timestamp || new Date().toISOString(),
+      message: json.message || "Service operational",
+    };
+  } catch (err: any) {
+    return {
+      status: "error",
+      latencyMs: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+      message: err.message || "Cannot connect to server",
+    };
+  }
+};
+
 export const fetchWorkspaces = async (): Promise<Workspace[]> => {
   const res = await fetch(`${API_BASE_URL}/workspaces`, {
     cache: "no-store",
