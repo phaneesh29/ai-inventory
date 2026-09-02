@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { eq, ilike, or, and, sql, lte } from "drizzle-orm";
+import { eq, ilike, or, and, sql, lte, desc } from "drizzle-orm";
 import {
   db,
   itemsTable,
@@ -9,7 +9,9 @@ import {
   supplierItemsTable,
   bomsTable,
   bomItemsTable,
+  purchaseOrdersTable,
 } from "../../db/index.js";
+import { receivePurchaseOrder } from "../purchaseOrders/purchaseOrder.service.js";
 
 export const createInvenAITools = () => {
   const searchComponents = tool({
@@ -222,6 +224,87 @@ export const createInvenAITools = () => {
     },
   });
 
+  const listPurchaseOrders = tool({
+    description: "Lists purchase orders in the system with their status, supplier, and total spend.",
+    inputSchema: z.object({
+      status: z.string().optional(),
+      poNumber: z.string().optional(),
+      limit: z.number().int().positive().max(50).default(10),
+    }),
+    execute: async ({ status, poNumber, limit }) => {
+      const conditions = [];
+      if (status) {
+        conditions.push(eq(purchaseOrdersTable.status, status));
+      }
+      if (poNumber) {
+        conditions.push(ilike(purchaseOrdersTable.poNumber, `%${poNumber}%`));
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const rows = await db
+        .select({
+          poId: purchaseOrdersTable.id,
+          poNumber: purchaseOrdersTable.poNumber,
+          supplierName: suppliersTable.name,
+          supplierCode: suppliersTable.code,
+          status: purchaseOrdersTable.status,
+          totalAmount: purchaseOrdersTable.totalAmount,
+          currency: purchaseOrdersTable.currency,
+          createdAt: purchaseOrdersTable.createdAt,
+        })
+        .from(purchaseOrdersTable)
+        .innerJoin(suppliersTable, eq(purchaseOrdersTable.supplierId, suppliersTable.id))
+        .where(whereClause)
+        .orderBy(desc(purchaseOrdersTable.createdAt))
+        .limit(limit);
+
+      return {
+        totalRecords: rows.length,
+        purchaseOrders: rows,
+      };
+    },
+  });
+
+  const receivePurchaseOrderShipment = tool({
+    description: "Receives a delivered purchase order into warehouse stock, updates inventory, and adjusts the supplier reliability score based on delivery speed. Requires user approval.",
+    inputSchema: z.object({
+      purchaseOrderId: z.uuid({ error: "Invalid purchase order UUID" }).optional(),
+      poNumber: z.string().optional(),
+      location: z.string().optional(),
+      deliveryNotes: z.string().optional(),
+    }),
+    execute: async ({ purchaseOrderId, poNumber, location, deliveryNotes }) => {
+      let resolvedPOId = purchaseOrderId;
+
+      if (!resolvedPOId && poNumber) {
+        const [found] = await db
+          .select({ id: purchaseOrdersTable.id })
+          .from(purchaseOrdersTable)
+          .where(ilike(purchaseOrdersTable.poNumber, `%${poNumber}%`))
+          .limit(1);
+
+        if (found) {
+          resolvedPOId = found.id;
+        }
+      }
+
+      if (!resolvedPOId) {
+        return { error: "Either purchaseOrderId or valid poNumber must be provided" };
+      }
+
+      const result = await receivePurchaseOrder(resolvedPOId, {
+        location,
+        notes: deliveryNotes,
+      });
+
+      return {
+        status: "PURCHASE_ORDER_RECEIVED_SUCCESSFULLY",
+        result,
+      };
+    },
+  });
+
   const insertMasterComponent = tool({
     description: "Adds a new component to the master parts catalog. Requires user approval.",
     inputSchema: z.object({
@@ -356,6 +439,8 @@ export const createInvenAITools = () => {
     querySupplierCatalog,
     listLowStockAlerts,
     getBOMDetails,
+    listPurchaseOrders,
+    receivePurchaseOrderShipment,
     insertMasterComponent,
     addWarehouseStock,
     registerSupplier,

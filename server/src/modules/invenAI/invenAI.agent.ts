@@ -15,6 +15,7 @@ export const createInvenAIAgent = () => {
       addWarehouseStock: "user-approval",
       registerSupplier: "user-approval",
       addSupplierCatalogItem: "user-approval",
+      receivePurchaseOrderShipment: "user-approval",
     },
   });
 };

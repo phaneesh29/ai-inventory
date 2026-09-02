@@ -7,6 +7,7 @@ import itemRoutes from "./items/item.routes.js";
 import supplierRoutes from "./suppliers/supplier.routes.js";
 import invenAIRoutes from "./invenAI/invenAI.routes.js";
 import insightsRoutes from "./insights/insights.routes.js";
+import purchaseOrderRoutes from "./purchaseOrders/purchaseOrder.routes.js";
 
 const v1Router = Router();
 
@@ -18,5 +19,6 @@ v1Router.use("/inventory", inventoryRoutes);
 v1Router.use("/suppliers", supplierRoutes);
 v1Router.use("/inven-ai", invenAIRoutes);
 v1Router.use("/insights", insightsRoutes);
+v1Router.use("/purchase-orders", purchaseOrderRoutes);
 
 export default v1Router;
