@@ -10,40 +10,45 @@ import {
   deleteSupplierItem,
   type Supplier,
   type SupplierItem,
+  type PriceTier,
 } from "@/services/api";
+import { useToast } from "@/context/ToastContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
   Truck,
   Plus,
   RefreshCw,
   Search,
   ExternalLink,
-  Mail,
   Trash2,
   Clock,
   ShieldCheck,
-  Building2,
-  TrendingUp,
-  Layers,
   X,
   CreditCard,
   DollarSign,
-  Package,
+  Tag,
 } from "lucide-react";
 
 export default function SuppliersPage() {
+  const { toast } = useToast();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [supplierItems, setSupplierItems] = useState<SupplierItem[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
+
+  const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null);
+  const [isDeletingSupplier, setIsDeletingSupplier] = useState(false);
+
+  const [deletingQuoteItemId, setDeletingQuoteItemId] = useState<string | null>(null);
+  const [isDeletingQuote, setIsDeletingQuote] = useState(false);
 
   const [isRegisteringSupplier, setIsRegisteringSupplier] = useState(false);
   const [newSupName, setNewSupName] = useState("");
@@ -59,7 +64,12 @@ export default function SuppliersPage() {
   const [isAddingQuote, setIsAddingQuote] = useState(false);
   const [quotePartNumber, setQuotePartNumber] = useState("");
   const [quoteSupplierSku, setQuoteSupplierSku] = useState("");
-  const [quoteUnitPrice, setQuoteUnitPrice] = useState("");
+  const [quoteBasePrice, setQuoteBasePrice] = useState("");
+  const [customPriceTiers, setCustomPriceTiers] = useState<PriceTier[]>([
+    { minQuantity: 1, unitPrice: 0 },
+    { minQuantity: 50, unitPrice: 0 },
+    { minQuantity: 500, unitPrice: 0 },
+  ]);
   const [quoteStock, setQuoteStock] = useState("1000");
   const [quoteLeadTime, setQuoteLeadTime] = useState("3");
   const [quoteMoq, setQuoteMoq] = useState("1");
@@ -69,12 +79,11 @@ export default function SuppliersPage() {
   const loadSuppliers = async () => {
     try {
       setIsLoading(true);
-      setError(null);
       const res = await fetchSuppliers({ limit: 50 });
       setSuppliers(res.suppliers);
       setTotalCount(res.total);
     } catch (err: any) {
-      setError(err.message || "Failed to load suppliers");
+      toast.error("Failed to load suppliers", err.message);
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +100,7 @@ export default function SuppliersPage() {
       const items = await fetchSupplierItems(sup.id);
       setSupplierItems(items);
     } catch (err: any) {
-      console.error("Failed to load catalog items for supplier:", err);
+      toast.error("Failed to load quotes", err.message);
     } finally {
       setIsLoadingItems(false);
     }
@@ -108,7 +117,7 @@ export default function SuppliersPage() {
       setIsSubmittingSupplier(true);
       setSupplierFormError(null);
 
-      await createSupplier({
+      const created = await createSupplier({
         name: newSupName.trim(),
         code: newSupCode.trim().toUpperCase(),
         contactEmail: newSupEmail.trim() || undefined,
@@ -124,35 +133,87 @@ export default function SuppliersPage() {
       setNewSupEmail("");
       setNewSupWebsite("");
       setIsRegisteringSupplier(false);
+      toast.success("Supplier Registered", `"${created.name}" (${created.code}) added to matrix.`);
       await loadSuppliers();
     } catch (err: any) {
       setSupplierFormError(err.message || "Failed to create supplier");
+      toast.error("Registration Failed", err.message);
     } finally {
       setIsSubmittingSupplier(false);
     }
   };
 
-  const handleDeleteSupplier = async (e: React.MouseEvent, id: string, name: string) => {
-    e.stopPropagation();
-    if (confirm(`Remove supplier "${name}" from matrix?`)) {
-      try {
-        await deleteSupplier(id);
-        if (selectedSupplier?.id === id) {
-          setSelectedSupplier(null);
-          setSupplierItems([]);
-        }
-        await loadSuppliers();
-      } catch (err: any) {
-        alert(err.message || "Failed to delete supplier");
+  const handleConfirmDeleteSupplier = async () => {
+    if (!deletingSupplier) return;
+
+    try {
+      setIsDeletingSupplier(true);
+      await deleteSupplier(deletingSupplier.id);
+      toast.success("Supplier Removed", `"${deletingSupplier.name}" was deleted.`);
+      if (selectedSupplier?.id === deletingSupplier.id) {
+        setSelectedSupplier(null);
+        setSupplierItems([]);
       }
+      setDeletingSupplier(null);
+      await loadSuppliers();
+    } catch (err: any) {
+      toast.error("Delete Failed", err.message);
+    } finally {
+      setIsDeletingSupplier(false);
     }
+  };
+
+  const handleBasePriceChange = (val: string) => {
+    setQuoteBasePrice(val);
+    const num = parseFloat(val);
+    if (!isNaN(num) && num > 0) {
+      setCustomPriceTiers([
+        { minQuantity: 1, unitPrice: num },
+        { minQuantity: 50, unitPrice: Number((num * 0.9).toFixed(3)) },
+        { minQuantity: 500, unitPrice: Number((num * 0.8).toFixed(3)) },
+      ]);
+    }
+  };
+
+  const handleUpdateTierQuantity = (index: number, qty: number) => {
+    setCustomPriceTiers((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], minQuantity: qty };
+      return copy;
+    });
+  };
+
+  const handleUpdateTierPrice = (index: number, price: number) => {
+    setCustomPriceTiers((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], unitPrice: price };
+      return copy;
+    });
+  };
+
+  const handleAddTierRow = () => {
+    const lastTier = customPriceTiers[customPriceTiers.length - 1];
+    const newQty = lastTier ? lastTier.minQuantity * 5 : 1000;
+    const newPrice = lastTier ? Number((lastTier.unitPrice * 0.9).toFixed(3)) : 1.0;
+    setCustomPriceTiers((prev) => [...prev, { minQuantity: newQty, unitPrice: newPrice }]);
+  };
+
+  const handleRemoveTierRow = (index: number) => {
+    if (customPriceTiers.length <= 1) return;
+    setCustomPriceTiers((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleAddQuoteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSupplier) return;
-    if (!quotePartNumber.trim() || !quoteSupplierSku.trim() || !quoteUnitPrice.trim()) {
-      setQuoteFormError("Part number, SKU, and unit price are required.");
+    if (!quotePartNumber.trim() || !quoteSupplierSku.trim()) {
+      setQuoteFormError("Part number and SKU are required.");
+      return;
+    }
+
+    const validTiers = customPriceTiers.filter((t) => t.minQuantity > 0 && t.unitPrice > 0);
+    if (validTiers.length === 0) {
+      setQuoteFormError("Please provide at least one valid price tier with quantity and unit price.");
       return;
     }
 
@@ -160,12 +221,7 @@ export default function SuppliersPage() {
       setIsSubmittingQuote(true);
       setQuoteFormError(null);
 
-      const basePrice = parseFloat(quoteUnitPrice);
-      const priceTiers = [
-        { minQuantity: 1, unitPrice: basePrice },
-        { minQuantity: 50, unitPrice: Number((basePrice * 0.9).toFixed(3)) },
-        { minQuantity: 500, unitPrice: Number((basePrice * 0.8).toFixed(3)) },
-      ];
+      const basePrice = validTiers[0].unitPrice;
 
       await addSupplierItem(selectedSupplier.id, {
         partNumber: quotePartNumber.trim(),
@@ -174,35 +230,40 @@ export default function SuppliersPage() {
         stockAvailable: parseInt(quoteStock, 10) || 0,
         leadTimeDays: parseFloat(quoteLeadTime) || 3,
         minimumOrderQuantity: parseInt(quoteMoq, 10) || 1,
-        priceTiers,
+        priceTiers: validTiers,
       });
 
       setQuotePartNumber("");
       setQuoteSupplierSku("");
-      setQuoteUnitPrice("");
+      setQuoteBasePrice("");
       setIsAddingQuote(false);
+      toast.success("Quote Added", `Added custom volume quote for "${quotePartNumber}" under ${selectedSupplier.code}.`);
 
       const updated = await fetchSupplierItems(selectedSupplier.id);
       setSupplierItems(updated);
       await loadSuppliers();
     } catch (err: any) {
       setQuoteFormError(err.message || "Failed to add quote to catalog");
+      toast.error("Quote Failed", err.message);
     } finally {
       setIsSubmittingQuote(false);
     }
   };
 
-  const handleDeleteQuote = async (e: React.MouseEvent, itemId: string) => {
-    e.stopPropagation();
-    if (!selectedSupplier) return;
-    if (confirm("Remove this catalog quote?")) {
-      try {
-        await deleteSupplierItem(selectedSupplier.id, itemId);
-        const updated = await fetchSupplierItems(selectedSupplier.id);
-        setSupplierItems(updated);
-      } catch (err: any) {
-        alert(err.message || "Failed to delete catalog item");
-      }
+  const handleConfirmDeleteQuote = async () => {
+    if (!selectedSupplier || !deletingQuoteItemId) return;
+
+    try {
+      setIsDeletingQuote(true);
+      await deleteSupplierItem(selectedSupplier.id, deletingQuoteItemId);
+      toast.success("Quote Deleted", "Catalog quote was removed.");
+      setDeletingQuoteItemId(null);
+      const updated = await fetchSupplierItems(selectedSupplier.id);
+      setSupplierItems(updated);
+    } catch (err: any) {
+      toast.error("Delete Failed", err.message);
+    } finally {
+      setIsDeletingQuote(false);
     }
   };
 
@@ -261,15 +322,6 @@ export default function SuppliersPage() {
             </Button>
           </div>
         </div>
-
-        {error && (
-          <div className="rounded-xl bg-[#241414] border border-[#451e1e] p-4 text-xs text-[#f87171] flex items-center justify-between">
-            <span>{error}</span>
-            <Button variant="danger" size="sm" onClick={loadSuppliers}>
-              Retry
-            </Button>
-          </div>
-        )}
 
         <div className="flex items-center gap-3 bg-[#0f1011] p-3 rounded-xl border border-[#23252a]">
           <div className="relative flex-1 max-w-md">
@@ -386,7 +438,10 @@ export default function SuppliersPage() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={(e) => handleDeleteSupplier(e, sup.id, sup.name)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingSupplier(sup);
+                          }}
                           className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#f87171] transition-all"
                           title="Delete Supplier"
                         >
@@ -429,7 +484,15 @@ export default function SuppliersPage() {
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => setIsAddingQuote(true)}
+                    onClick={() => {
+                      setQuoteBasePrice("");
+                      setCustomPriceTiers([
+                        { minQuantity: 1, unitPrice: 0 },
+                        { minQuantity: 50, unitPrice: 0 },
+                        { minQuantity: 500, unitPrice: 0 },
+                      ]);
+                      setIsAddingQuote(true);
+                    }}
                   >
                     <Plus className="h-3.5 w-3.5" />
                     <span>Add Catalog Quote</span>
@@ -457,7 +520,15 @@ export default function SuppliersPage() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => setIsAddingQuote(true)}
+                    onClick={() => {
+                      setQuoteBasePrice("");
+                      setCustomPriceTiers([
+                        { minQuantity: 1, unitPrice: 0 },
+                        { minQuantity: 50, unitPrice: 0 },
+                        { minQuantity: 500, unitPrice: 0 },
+                      ]);
+                      setIsAddingQuote(true);
+                    }}
                   >
                     <Plus className="h-3.5 w-3.5" />
                     <span>Add First Quote</span>
@@ -485,7 +556,10 @@ export default function SuppliersPage() {
                           <Badge variant="primary">${item.unitPrice.toFixed(3)}</Badge>
                           <button
                             type="button"
-                            onClick={(e) => handleDeleteQuote(e, item.itemId)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingQuoteItemId(item.itemId);
+                            }}
                             className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#f87171] transition-all"
                             title="Delete Quote"
                           >
@@ -496,13 +570,13 @@ export default function SuppliersPage() {
 
                       <div className="rounded-lg bg-[#0f1011] border border-[#23252a] p-2.5 space-y-1.5">
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8a8f98] block">
-                          Volume Price Breaks
+                          Volume Price Breaks (Qty ➔ Price)
                         </span>
                         <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-mono">
                           {(item.priceTiers || []).map((tier, idx) => (
-                            <div key={idx} className="rounded bg-[#141516] border border-[#23252a] p-1">
+                            <div key={idx} className="rounded bg-[#141516] border border-[#23252a] p-1.5">
                               <span className="text-[#8a8f98] block">{tier.minQuantity}+ pcs</span>
-                              <span className="font-bold text-[#4ade80]">${tier.unitPrice.toFixed(3)}</span>
+                              <span className="font-bold text-[#4ade80] text-xs">${tier.unitPrice.toFixed(3)}</span>
                             </div>
                           ))}
                         </div>
@@ -672,12 +746,12 @@ export default function SuppliersPage() {
 
         {isAddingQuote && selectedSupplier && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-100">
-            <Card className="w-full max-w-md border-[#5e6ad2]/70 bg-[#0f1011] shadow-2xl">
+            <Card className="w-full max-w-lg border-[#5e6ad2]/70 bg-[#0f1011] shadow-2xl">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Plus className="h-4 w-4 text-[#5e6ad2]" />
-                    <CardTitle>Add Quote for {selectedSupplier.code}</CardTitle>
+                    <CardTitle>Add Custom Volume Quote ({selectedSupplier.code})</CardTitle>
                   </div>
                   <button
                     type="button"
@@ -688,70 +762,112 @@ export default function SuppliersPage() {
                   </button>
                 </div>
                 <CardDescription>
-                  Link a master component with distributor pricing and tiered discounts.
+                  Specify exact custom prices for any order volume breaks.
                 </CardDescription>
               </CardHeader>
 
               <CardContent>
-                <form onSubmit={handleAddQuoteSubmit} className="space-y-3.5 text-xs">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-[#d0d6e0]">
-                      Master Part Number (MPN) *
-                    </label>
-                    <Input
-                      autoFocus
-                      placeholder="e.g. ESP32-WROOM-32E-N4 or SSD1306-0.96-OLED-I2C"
-                      value={quotePartNumber}
-                      onChange={(e) => setQuotePartNumber(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-[#d0d6e0]">
-                      Distributor SKU / Part Number *
-                    </label>
-                    <Input
-                      placeholder="e.g. DIGIKEY-ESP32-32E-ND"
-                      value={quoteSupplierSku}
-                      onChange={(e) => setQuoteSupplierSku(e.target.value)}
-                    />
-                  </div>
-
+                <form onSubmit={handleAddQuoteSubmit} className="space-y-4 text-xs">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[11px] font-medium text-[#d0d6e0]">
-                        Unit Base Price ($) *
+                        Master Part Number (MPN) *
                       </label>
                       <Input
-                        type="number"
-                        step="0.001"
-                        placeholder="e.g. 2.10"
-                        value={quoteUnitPrice}
-                        onChange={(e) => setQuoteUnitPrice(e.target.value)}
+                        autoFocus
+                        placeholder="e.g. ESP32-WROOM-32E-N4"
+                        value={quotePartNumber}
+                        onChange={(e) => setQuotePartNumber(e.target.value)}
                       />
                     </div>
 
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-[#d0d6e0]">
+                        Distributor SKU *
+                      </label>
+                      <Input
+                        placeholder="e.g. DIGIKEY-ESP32-ND"
+                        value={quoteSupplierSku}
+                        onChange={(e) => setQuoteSupplierSku(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 rounded-xl bg-[#010102] border border-[#23252a] p-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-[#8a8f98] flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5 text-[#5e6ad2]" />
+                        <span>Volume Price Breaks (Custom Tiers)</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleAddTierRow}
+                        className="text-[11px] font-medium text-[#828fff] hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="h-3 w-3" />
+                        <span>Add Tier</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {customPriceTiers.map((tier, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <div className="w-28">
+                            <span className="text-[10px] text-[#8a8f98] block mb-0.5">Min Qty</span>
+                            <Input
+                              type="number"
+                              value={tier.minQuantity}
+                              onChange={(e) => handleUpdateTierQuantity(idx, parseInt(e.target.value, 10) || 1)}
+                              className="h-7 text-xs font-mono"
+                            />
+                          </div>
+
+                          <div className="flex-1">
+                            <span className="text-[10px] text-[#8a8f98] block mb-0.5">Unit Price ($)</span>
+                            <Input
+                              type="number"
+                              step="0.001"
+                              value={tier.unitPrice || ""}
+                              onChange={(e) => handleUpdateTierPrice(idx, parseFloat(e.target.value) || 0)}
+                              placeholder="0.000"
+                              className="h-7 text-xs font-mono text-[#4ade80]"
+                            />
+                          </div>
+
+                          {customPriceTiers.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTierRow(idx)}
+                              className="p-1 text-[#8a8f98] hover:text-[#f87171] transition-colors mt-4"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
                     <div className="space-y-1">
                       <label className="text-[11px] font-medium text-[#d0d6e0]">
                         Stock Available
                       </label>
                       <Input
                         type="number"
-                        placeholder="e.g. 50000"
+                        placeholder="50000"
                         value={quoteStock}
                         onChange={(e) => setQuoteStock(e.target.value)}
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[11px] font-medium text-[#d0d6e0]">
                         Lead Time (Days)
                       </label>
                       <Input
                         type="number"
-                        placeholder="e.g. 2"
+                        placeholder="2"
                         value={quoteLeadTime}
                         onChange={(e) => setQuoteLeadTime(e.target.value)}
                       />
@@ -759,11 +875,11 @@ export default function SuppliersPage() {
 
                     <div className="space-y-1">
                       <label className="text-[11px] font-medium text-[#d0d6e0]">
-                        Minimum Order Qty (MOQ)
+                        MOQ
                       </label>
                       <Input
                         type="number"
-                        placeholder="e.g. 1"
+                        placeholder="1"
                         value={quoteMoq}
                         onChange={(e) => setQuoteMoq(e.target.value)}
                       />
@@ -787,11 +903,11 @@ export default function SuppliersPage() {
                       type="submit"
                       variant="primary"
                       size="sm"
-                      disabled={!quotePartNumber.trim() || !quoteUnitPrice.trim()}
+                      disabled={!quotePartNumber.trim()}
                       isLoading={isSubmittingQuote}
                     >
                       <Plus className="h-3.5 w-3.5" />
-                      <span>Save Quote</span>
+                      <span>Save Custom Quote</span>
                     </Button>
                   </div>
                 </form>
@@ -799,6 +915,26 @@ export default function SuppliersPage() {
             </Card>
           </div>
         )}
+
+        <ConfirmModal
+          isOpen={!!deletingSupplier}
+          title="Delete Supplier"
+          description={`Are you sure you want to permanently delete supplier "${deletingSupplier?.name}" and all associated catalog quotes?`}
+          confirmLabel="Delete Supplier"
+          isLoading={isDeletingSupplier}
+          onConfirm={handleConfirmDeleteSupplier}
+          onCancel={() => setDeletingSupplier(null)}
+        />
+
+        <ConfirmModal
+          isOpen={!!deletingQuoteItemId}
+          title="Delete Catalog Quote"
+          description="Are you sure you want to delete this distributor pricing quote?"
+          confirmLabel="Delete Quote"
+          isLoading={isDeletingQuote}
+          onConfirm={handleConfirmDeleteQuote}
+          onCancel={() => setDeletingQuoteItemId(null)}
+        />
       </main>
     </div>
   );

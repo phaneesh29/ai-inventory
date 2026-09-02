@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { fetchItems, createItem, deleteItem, type Item } from "@/services/api";
+import { useToast } from "@/context/ToastContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
   Microchip,
   Search,
@@ -16,25 +18,24 @@ import {
   Copy,
   Check,
   Trash2,
-  Cpu,
-  Layers,
   SlidersHorizontal,
   X,
-  Zap,
-  Info,
 } from "lucide-react";
 
 export default function ComponentCatalogPage() {
+  const { toast } = useToast();
   const [items, setItems] = useState<Item[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [copiedMpn, setCopiedMpn] = useState<string | null>(null);
+
+  const [deletingItem, setDeletingItem] = useState<Item | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [newPartNumber, setNewPartNumber] = useState("");
@@ -50,12 +51,11 @@ export default function ComponentCatalogPage() {
   const loadCatalog = async () => {
     try {
       setIsLoading(true);
-      setError(null);
       const res = await fetchItems({ limit: 100 });
       setItems(res.items);
       setTotalCount(res.total);
     } catch (err: any) {
-      setError(err.message || "Failed to load master component catalog");
+      toast.error("Failed to load catalog", err.message);
     } finally {
       setIsLoading(false);
     }
@@ -96,19 +96,24 @@ export default function ComponentCatalogPage() {
     e.stopPropagation();
     navigator.clipboard.writeText(mpn);
     setCopiedMpn(mpn);
+    toast.info("Copied to Clipboard", mpn);
     setTimeout(() => setCopiedMpn(null), 2000);
   };
 
-  const handleDeleteItem = async (e: React.MouseEvent, id: string, mpn: string) => {
-    e.stopPropagation();
-    if (confirm(`Remove component "${mpn}" from master catalog?`)) {
-      try {
-        await deleteItem(id);
-        if (selectedItem?.id === id) setSelectedItem(null);
-        await loadCatalog();
-      } catch (err: any) {
-        alert(err.message || "Failed to delete item");
-      }
+  const handleConfirmDelete = async () => {
+    if (!deletingItem) return;
+
+    try {
+      setIsDeleting(true);
+      await deleteItem(deletingItem.id);
+      toast.success("Component Removed", `"${deletingItem.partNumber}" was deleted.`);
+      if (selectedItem?.id === deletingItem.id) setSelectedItem(null);
+      setDeletingItem(null);
+      await loadCatalog();
+    } catch (err: any) {
+      toast.error("Delete Failed", err.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -127,7 +132,7 @@ export default function ComponentCatalogPage() {
       if (newManufacturer.trim()) specifications.manufacturer = newManufacturer.trim();
       if (newFootprint.trim()) specifications.packageFootprint = newFootprint.trim();
 
-      await createItem({
+      const created = await createItem({
         partNumber: newPartNumber.trim(),
         name: newName.trim(),
         category: newCategory.trim(),
@@ -142,9 +147,11 @@ export default function ComponentCatalogPage() {
       setNewFootprint("");
       setNewManufacturer("");
       setIsRegistering(false);
+      toast.success("Component Registered", `"${created.partNumber}" added to catalog.`);
       await loadCatalog();
     } catch (err: any) {
       setFormError(err.message || "Failed to register component");
+      toast.error("Registration Failed", err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -190,15 +197,6 @@ export default function ComponentCatalogPage() {
             </Button>
           </div>
         </div>
-
-        {error && (
-          <div className="rounded-xl bg-[#241414] border border-[#451e1e] p-4 text-xs text-[#f87171] flex items-center justify-between">
-            <span>{error}</span>
-            <Button variant="danger" size="sm" onClick={loadCatalog}>
-              Retry
-            </Button>
-          </div>
-        )}
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#0f1011] p-3 rounded-xl border border-[#23252a]">
           <div className="relative flex-1 max-w-md">
@@ -354,7 +352,10 @@ export default function ComponentCatalogPage() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={(e) => handleDeleteItem(e, item.id, item.partNumber)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingItem(item);
+                          }}
                           className="opacity-0 group-hover:opacity-100 p-1 text-[#8a8f98] hover:text-[#f87171] transition-all"
                           title="Delete Component"
                         >
@@ -402,7 +403,10 @@ export default function ComponentCatalogPage() {
                       <td className="px-4 py-3 text-right">
                         <button
                           type="button"
-                          onClick={(e) => handleDeleteItem(e, item.id, item.partNumber)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingItem(item);
+                          }}
                           className="p-1 text-[#8a8f98] hover:text-[#f87171] transition-colors"
                           title="Delete Component"
                         >
@@ -623,6 +627,16 @@ export default function ComponentCatalogPage() {
             </Card>
           </div>
         )}
+
+        <ConfirmModal
+          isOpen={!!deletingItem}
+          title="Delete Component"
+          description={`Are you sure you want to permanently remove "${deletingItem?.partNumber}" from the master catalog?`}
+          confirmLabel="Delete Component"
+          isLoading={isDeleting}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeletingItem(null)}
+        />
       </main>
     </div>
   );

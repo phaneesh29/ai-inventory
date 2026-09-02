@@ -3,10 +3,12 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { fetchWorkspaces, createWorkspace, deleteWorkspace, type Workspace } from "@/services/api";
+import { useToast } from "@/context/ToastContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
   Plus,
   ArrowRight,
@@ -19,24 +21,26 @@ import {
 } from "lucide-react";
 
 export default function WorkspacePortalPage() {
+  const { toast } = useToast();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  const [deletingWorkspace, setDeletingWorkspace] = useState<Workspace | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const loadWorkspaces = async () => {
     try {
       setIsLoading(true);
-      setError(null);
       const list = await fetchWorkspaces();
       setWorkspaces(list);
     } catch (err: any) {
-      setError(err.message || "Failed to load workspaces from backend");
+      toast.error("Failed to load workspaces", err.message);
     } finally {
       setIsLoading(false);
     }
@@ -53,27 +57,32 @@ export default function WorkspacePortalPage() {
     try {
       setIsSubmitting(true);
       setCreateError(null);
-      await createWorkspace(newName.trim());
+      const created = await createWorkspace(newName.trim());
       setNewName("");
       setIsCreating(false);
+      toast.success("Workspace Created", `"${created.name}" is ready for BOM runs.`);
       await loadWorkspaces();
     } catch (err: any) {
       setCreateError(err.message || "Failed to create workspace");
+      toast.error("Creation Failed", err.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string, name: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (confirm(`Are you sure you want to delete workspace "${name}"?`)) {
-      try {
-        await deleteWorkspace(id);
-        await loadWorkspaces();
-      } catch (err: any) {
-        alert(err.message || "Failed to delete workspace");
-      }
+  const handleConfirmDelete = async () => {
+    if (!deletingWorkspace) return;
+
+    try {
+      setIsDeleting(true);
+      await deleteWorkspace(deletingWorkspace.id);
+      toast.success("Workspace Deleted", `"${deletingWorkspace.name}" was removed.`);
+      setDeletingWorkspace(null);
+      await loadWorkspaces();
+    } catch (err: any) {
+      toast.error("Delete Failed", err.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -119,15 +128,6 @@ export default function WorkspacePortalPage() {
             </Button>
           </div>
         </div>
-
-        {error && (
-          <div className="rounded-xl bg-[#241414] border border-[#451e1e] p-4 text-xs text-[#f87171] flex items-center justify-between">
-            <span>{error}</span>
-            <Button variant="danger" size="sm" onClick={loadWorkspaces}>
-              Retry Connection
-            </Button>
-          </div>
-        )}
 
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-md">
@@ -253,7 +253,11 @@ export default function WorkspacePortalPage() {
 
                   <button
                     type="button"
-                    onClick={(e) => handleDelete(e, ws.id, ws.name)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDeletingWorkspace(ws);
+                    }}
                     className="opacity-0 group-hover:opacity-100 p-1.5 text-[#8a8f98] hover:text-[#f87171] hover:bg-[#241414] rounded-md transition-all"
                     title="Delete Workspace"
                   >
@@ -276,6 +280,16 @@ export default function WorkspacePortalPage() {
             ))}
           </div>
         )}
+
+        <ConfirmModal
+          isOpen={!!deletingWorkspace}
+          title="Delete Workspace"
+          description={`Are you sure you want to permanently delete workspace "${deletingWorkspace?.name}"? All associated BOMs and allocations will be removed.`}
+          confirmLabel="Delete Workspace"
+          isLoading={isDeleting}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeletingWorkspace(null)}
+        />
       </main>
     </div>
   );
